@@ -22,10 +22,6 @@ class Grid:
         self.faces = self.Faces()
         self.nodes = self.Nodes()
 
-    def __repr__(self):
-        return "({}D-Grid, {} cells, {} faces)"\
-            .format(self.gridDim, self.cells.num, self.faces.num)
-
     def __eq__(G, V):
         if ((G.cells.num != V.cells.num) or
            (not np.array_equal(G.cells.facePos, V.cells.facePos)) or
@@ -36,22 +32,43 @@ class Grid:
            (not np.array_equal(G.faces.neighbors, V.faces.neighbors)) or
            (not np.array_equal(G.faces.nodes, V.faces.nodes)) or
            (G.nodes.num != V.nodes.num) or
-           (not np.array_equal(G.nodes.coords, V.nodes.coords)) or
+           (
+               np.array_equal(G.nodes.coords.shape, V.nodes.coords.shape) and
+               not np.isclose(G.nodes.coords, V.nodes.coords).all()
+           ) or
            (G.gridType != V.gridType) or
            (G.gridDim != V.gridDim)):
-            print(V.gridType)
             return False
 
         if hasattr(G, "cartDims") and hasattr(V, "cartDims"):
             if not np.array_equal(G.cartDims, V.cartDims):
-                print("cartDims uenqual")
                 return False
         elif hasattr(G, "cartDims") or hasattr(V, "cartDims"):
-            print("cartdims elif")
             return False
 
         return True
 
+    def _cmp(G, V):
+        """Shows attributes comparions betwen two grids. For debugging."""
+        print("Grid attributes comparison:")
+        s = {True: "are equal", False: "are different"}
+
+        print("    cells.num", s[G.cells.num == V.cells.num])
+        print("    cells.facePos", s[np.array_equal(G.cells.facePos, V.cells.facePos)])
+        print("    cells.indexMap", s[np.array_equal(G.cells.indexMap, V.cells.indexMap)])
+        print("    cells.faces", s[np.array_equal(G.cells.faces, V.cells.faces)])
+
+        print("    faces.num", s[G.faces.num != V.cells.num])
+        print("    faces.nodePos", s[np.array_equal(G.faces.nodePos, V.faces.nodePos)])
+        print("    faces.neighbors", s[np.array_equal(G.faces.neighbors, V.faces.neighbors)])
+        print("    faces.nodes", s[np.array_equal(G.faces.nodes, V.faces.nodes)])
+
+        print("    nodes.num", s[G.nodes.num == V.nodes.num])
+        print("    nodes.coords",
+                s[np.array_equal(G.nodes.coords.shape, V.nodes.coords.shape) and
+                  np.isclose(G.nodes.coords, V.nodes.coords).all()])
+        print("    gridType", s[G.gridType == V.gridType])
+        print("    gridDim", s[G.gridDim == V.gridDim])
 
 def tensorGrid(x, y, z=None, depthz=None):
     """Construct Cartesian grid with variable physical cell sizes.
@@ -215,19 +232,19 @@ def _tensorGrid2D(x, y, depthz=None):
 def _tensorGrid3D(x, y, z, depthz=None):
     pass
 
-def cartGrid(celldim, physdim=None):
+def cartGrid(cellDim, physDim=None):
     """Constructs 2D or 3D Cartesian grid in physical space.
 
     Synopsis:
-        G = cartGrid(celldim)
-        G = cartGrid(celldim, physdim)
+        G = cartGrid(cellDim)
+        G = cartGrid(cellDim, physDim)
 
     Args:
-        celldim (ndarray):
+        cellDim (ndarray):
             Specifies number of cells in each coordinate direction. Length must
             be 2 or 3.
 
-        physdim (Optional[ndarray]):
+        physDim (Optional[ndarray]):
             Specifies physical size of computational domain in meters.  Length
             must be same as celldim. Default value == celldim (i.e., each cell
             has physical dimension 1-by-1-by-1 meter).
@@ -265,21 +282,28 @@ def cartGrid(celldim, physdim=None):
         grid_structure, tensorGrid, computeGeometry
 
     """
-    if any(celldim > 0):
-        raise ValueError("celldim must be positive")
+    assert isinstance(cellDim, np.ndarray)
 
-    if physdim is None:
-        physdim = celldim
+    if any(cellDim <= 0):
+        raise ValueError("cellDim must be positive")
 
-    x = np.linspace(0, physdim[0], celldim[0]+1)
-    y = np.linspace(0, physdim[1], celldim[1]+1)
-    if len(celldim) == 3:
-        z = np.linspace(0, physdim[2], celldim[2]+1)
+    if physDim is None:
+        physDim = cellDim
+    assert isinstance(physDim, np.ndarray)
+
+    if len(cellDim) == 3:
+        x = np.linspace(0, physDim[0], cellDim[0]+1)
+        y = np.linspace(0, physDim[1], cellDim[1]+1)
+        z = np.linspace(0, physDim[2], cellDim[2]+1)
         G = tensorGrid(x, y, z)
-    else:
+    elif len(cellDim) == 2:
+        x = np.linspace(0, physDim[0], cellDim[0]+1)
+        y = np.linspace(0, physDim[1], cellDim[1]+1)
         G = tensorGrid(x, y)
+    else:
+        raise ValueError("Only 2- and 3-dimensional grids are supported.")
 
     # Record grid constructor in grid
-    G.gridType.add(__file__)
+    G.gridType.add("cartGrid")
 
     return G

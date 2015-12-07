@@ -9,7 +9,35 @@ import numpy as np
 from pyrst.gridprocessing import *
 from pyrst.io import loadMRSTGrid
 
+
+class TestGrid:
+
+    def test_equal_except_cartDims(self):
+        G = cartGrid(np.array([4, 5]))
+        V = cartGrid(np.array([4, 5]))
+        V.cartDims[0] = 10 # Malformed grid for test
+        assert G != V
+
+        del V.cartDims
+        assert G != V
+
+    def test_unequal_grids_cellDim(self):
+        G = cartGrid(np.array([4, 5]))
+        V = cartGrid(np.array([4, 6]))
+        assert G != V
+
+    def test_cmp_equal(self):
+        G = cartGrid(np.array([4, 5]))
+        G._cmp(G)
+
+    def test_cmp_unequal(self):
+        G = cartGrid(np.array([4, 5]))
+        V = cartGrid(np.array([4, 6]))
+        G._cmp(V)
+
+
 class TestTensorGrid2D:
+
     def get_simple_params_2d(self):
         return np.array([0, 1]), np.array([0, 1, 2])
 
@@ -47,4 +75,25 @@ class TestTensorGrid2D:
         G_pyrst = tensorGrid(x, y)
 
         # Compare all variables
+        assert G_mrst == G_pyrst
+
+
+class TestCartGrid2D:
+
+    def test_nonpositive_cellDim(self):
+        with pytest.raises(ValueError):
+            G = cartGrid(np.array([0, 3]))
+
+    def test_invalid_dimension(self):
+        with pytest.raises(ValueError):
+            G = cartGrid(np.array([2]))
+        with pytest.raises(ValueError):
+            G = cartGrid(np.array([2, 2, 2, 2]))
+
+    def test_compare_MRST_simple(self):
+        # G = cartGrid([3 5], [1 1]);
+        G_mrst = loadMRSTGrid("tests/test_gridprocessing/cartGrid2D_simple.mat")
+
+        # Using numpy array parameters
+        G_pyrst = cartGrid(np.array([3, 5]), np.array([1, 1]))
         assert G_mrst == G_pyrst

@@ -41,6 +41,7 @@ def loadMRSTGrid(matfile, variablename="G"):
     FLOAT_DTYPE = np.float64
 
     data = loadmat(matfile, squeeze_me=True, struct_as_record=False)
+    print("variablename=",variablename)
     M = data[variablename] # MRST grid data, one-indexed
 
     G = Grid()
@@ -60,7 +61,10 @@ def loadMRSTGrid(matfile, variablename="G"):
     G.nodes.num = M.nodes.num
     G.nodes.coords = M.nodes.coords.astype(FLOAT_DTYPE)
 
-    G.cartDims = M.cartDims.astype(INT_DTYPE)
+    try:
+        G.cartDims = M.cartDims.astype(INT_DTYPE)
+    except AttributeError:
+        print("Info: Loaded grid has no cartDims")
     # Matlab saves the gridType either as string or array of strings, depending
     # on the number of grid types. We use "gridType" since type is a Python
     # keyword.
