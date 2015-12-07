@@ -58,3 +58,10 @@ target/
 
 # VirtualEnvs
 venv*/
+
+# Vim files
+*.swp
+*.swo
+
+# IntelliJ
+.idea/
