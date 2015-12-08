@@ -7,8 +7,9 @@ MRST, and add tests.
 
 ## Installation
 
-Currently there are no Python packages for this project. Download
-the whole repository and copy the "PyRST/pyrst" folder into your project.
+Currently there are no Python packages for this project. Download the whole
+repository and copy the "PyRST/pyrst" folder into your project. Any scientific
+Python3 distribution such as Anaconda will satisfy the requirements.
 
 
 ## Development:
@@ -27,6 +28,8 @@ To resume working after the initial steps have been completed:
     cd PyRST
     source venv3/bin/activate
     py.test
+
+SciPy needs to be compiled when installed using `pip`, and this can take up to 30 minutes.
 
 ## License
 

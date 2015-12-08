@@ -23,6 +23,35 @@ class Grid:
         self.nodes = self.Nodes()
 
     def __eq__(G, V):
+        """Tests two grids for equality.
+
+        The grids are considered equal if the following attributes are equal
+        for both grids:
+
+            * cells.num
+            * cells.facePos
+            * cells.indexMap
+            * cells.faces
+            * faces.num
+            * faces.nodePos
+            * faces.neighbors
+            * faces.nodes
+            * nodes.num
+            * nodes.coords (approximate floating point comparions)
+            * gridType
+            * gridDim
+            * cartDims
+
+        Example:
+
+            >>> G = cartGrid(np.array([4, 5]))
+            >>> V = cartGrid(np.array([4, 6]))
+            >>> G == G
+            True
+            >>> G == V
+            False
+
+        """
         if ((G.cells.num != V.cells.num) or
            (not np.array_equal(G.cells.facePos, V.cells.facePos)) or
            (not np.array_equal(G.cells.indexMap, V.cells.indexMap)) or
@@ -48,8 +77,23 @@ class Grid:
 
         return True
 
+    def __ne__(G, V):
+        return not G == V
+
     def _cmp(G, V):
-        """Shows attributes comparions betwen two grids. For debugging."""
+        """Shows attributes comparions betwen two grids. For debugging.
+
+        Example:
+
+            >>> G = cartGrid(np.array([4, 5]))
+            >>> V = cartGrid(np.array([4, 6]))
+            >>> G._cmp(V)
+            Grid attributes comparison:
+                cells.num are different
+                cells.facePos are different
+                cells.indexMap are different
+            ...
+        """
         print("Grid attributes comparison:")
         s = {True: "are equal", False: "are different"}
 
@@ -69,6 +113,7 @@ class Grid:
                   np.isclose(G.nodes.coords, V.nodes.coords).all()])
         print("    gridType", s[G.gridType == V.gridType])
         print("    gridDim", s[G.gridDim == V.gridDim])
+
 
 def tensorGrid(x, y, z=None, depthz=None):
     """Construct Cartesian grid with variable physical cell sizes.
@@ -135,6 +180,10 @@ def _tensorGrid2D(x, y, depthz=None):
     if any(dy <= 0):
         raise ValueError("y-values not monotonously increasing")
 
+    # We want float64 coordinates
+    x = x.astype(np.float64)
+    y = y.astype(np.float64)
+
     sizeX, sizeY = len(x) - 1, len(y) - 1
     cellDim = np.array([sizeX, sizeY])
 
@@ -198,6 +247,8 @@ def _tensorGrid2D(x, y, depthz=None):
         ).ravel()
     cellFaces[:,1] = np.tile(np.array([0, 2, 1, 3]), len(facesWest))
 
+    ## Generate neighbors
+
     # Cell index matrix
     cellIndices = -np.ones((sizeX+2, sizeY+2))
     cellIndices[1:-1, 1:-1] = np.arange(0, numCells)\
@@ -229,8 +280,143 @@ def _tensorGrid2D(x, y, depthz=None):
 
     return G
 
+
 def _tensorGrid3D(x, y, z, depthz=None):
-    pass
+    # Check input data
+    dx = np.diff(x)
+    dy = np.diff(y)
+    dz = np.diff(z)
+    if any(dx <= 0):
+        raise ValueError("x-values not monotonously increasing")
+    if any(dy <= 0):
+        raise ValueError("y-values not monotonously increasing")
+    if any(dz <= 0):
+        raise ValueError("z-values not monotonously increasing")
+
+    # We want float64 coordinates
+    x = x.astype(np.float64)
+    y = y.astype(np.float64)
+    z = z.astype(np.float64)
+
+    sizeX, sizeY, sizeZ = len(x)-1, len(y)-1, len(z)-1
+    cellDim = np.array([sizeX, sizeY, sizeZ])
+    if depthz is None:
+        depthz = np.zeros([sizeX+1, sizeY+1], dtype=np.float64)
+    elif depthz.size != (sizeX+1) * (sizeY+1):
+        raise ValueError("Argument depthz is wrongly sized")
+
+    numCells = sizeX * sizeY * sizeZ
+    numNodes = (sizeX+1) * (sizeY+1) * (sizeZ+1)
+    numFacesX = (sizeX+1) * sizeY * sizeZ # Number of faces parallel to yz-plane
+    numFacesY = sizeX * (sizeY+1) * sizeZ # Nubmer of faces parallel to xz-plane
+    numFacesZ = sizeX * sizeY * (sizeZ+1) # Number of faces parallel to xy-plane
+    numFaces = numFacesX + numFacesY + numFacesZ
+
+    # Nodes/coordinates
+    nodesX, nodesY, nodesZ = np.meshgrid(x, y, z, indexing="ij")
+    for k in range(0, nodesZ.shape[2]):
+        nodesZ[:,:,k] += depthz
+
+    coords = np.column_stack([
+            nodesX.ravel(order="F"),
+            nodesY.ravel(order="F"),
+            nodesZ.ravel(order="F"),
+        ])
+
+    ## Generate face-edges
+
+    # Node index matrix
+    nodeIndices = np.reshape(np.arange(0, numNodes),
+            (sizeX+1,  sizeY+1, sizeZ+1), order="F")
+
+    # X-faces
+    nodesFace1 = nodeIndices[:, :-1, :-1].ravel(order="F")
+    nodesFace2 = nodeIndices[:, 1:, :-1].ravel(order="F")
+    nodesFace3 = nodeIndices[:, 1:, 1:].ravel(order="F")
+    nodesFace4 = nodeIndices[:, :-1, 1:].ravel(order="F")
+    faceNodesX = np.row_stack([nodesFace1, nodesFace2, nodesFace3, nodesFace4]).ravel(order="F")
+
+    # Y-faces
+    nodesFace1 = nodeIndices[:-1, :, :-1].ravel(order="F")
+    nodesFace2 = nodeIndices[:-1, :, 1:].ravel(order="F")
+    nodesFace3 = nodeIndices[1:, :, 1:].ravel(order="F")
+    nodesFace4 = nodeIndices[1:, :, :-1].ravel(order="F")
+    faceNodesY = np.row_stack([nodesFace1, nodesFace2, nodesFace3, nodesFace4]).ravel(order="F")
+
+    # Z-faces
+    nodesFace1 = nodeIndices[:-1, :-1, :].ravel(order="F")
+    nodesFace2 = nodeIndices[1:, :-1, :].ravel(order="F")
+    nodesFace3 = nodeIndices[1:, 1:, :].ravel(order="F")
+    nodesFace4 = nodeIndices[:-1, 1:, :].ravel(order="F")
+    faceNodesZ = np.row_stack([nodesFace1, nodesFace2, nodesFace3, nodesFace4]).ravel(order="F")
+
+    faceNodes = np.concatenate([faceNodesX, faceNodesY, faceNodesZ])
+
+    ## Generate cell faces
+    faceOffset = 0
+    # Face index matrices
+    facesX = (np.arange(0, numFacesX) + faceOffset).reshape(
+                (sizeX+1, sizeY, sizeZ), order="F")
+    faceOffset += numFacesX
+    facesY = (np.arange(0, numFacesY) + faceOffset).reshape(
+                (sizeX, sizeY+1, sizeZ), order="F")
+    faceOffset += numFacesY
+    facesZ = (np.arange(0, numFacesZ) + faceOffset).reshape(
+                (sizeX, sizeY, sizeZ+1), order="F")
+
+    facesWest = facesX[:-1,:,:].ravel(order="F") # 0
+    facesEast = facesX[1:,:,:].ravel(order="F")  # 1
+    facesSouth = facesY[:,:-1,:].ravel(order="F")# 2
+    facesNorth = facesY[:,1:,:].ravel(order="F") # 3
+    facesTop = facesZ[:,:,:-1].ravel(order="F")  # 4
+    facesBottom = facesZ[:,:,1:].ravel(order="F")# 5
+
+    assert len(facesWest) == len(facesEast) == len(facesSouth) == len(facesNorth)
+    assert len(facesNorth) == len(facesTop) == len(facesBottom)
+    NUM_DIRECTIONS = 6
+    cellFaces = np.zeros([NUM_DIRECTIONS*len(facesWest), 2])
+    cellFaces[:,0] = np.column_stack([
+            facesWest, facesEast, facesSouth, facesNorth, facesTop, facesBottom
+        ]).ravel()
+    cellFaces[:,1] = np.tile(np.array([0, 1, 2, 3, 4, 5]), len(facesWest))
+
+    ## Generate neighbors
+
+    # Cell index matrix
+    cellIndices = -np.ones([sizeX+2, sizeY+2, sizeZ+2])
+    cellIndices[1:-1, 1:-1, 1:-1] = np.arange(0, numCells).reshape(
+        [sizeX, sizeY, sizeZ], order="F")
+
+    neighborsX1 = cellIndices[:-1, 1:-1, 1:-1].ravel(order="F")
+    neighborsX2 = cellIndices[1:, 1:-1, 1:-1].ravel(order="F")
+    neighborsY1 = cellIndices[1:-1, :-1, 1:-1].ravel(order="F")
+    neighborsY2 = cellIndices[1:-1, 1:, 1:-1].ravel(order="F")
+    neighborsZ1 = cellIndices[1:-1, 1:-1, :-1].ravel(order="F")
+    neighborsZ2 = cellIndices[1:-1, 1:-1, 1:].ravel(order="F")
+    neighbors = np.column_stack([
+            np.concatenate([neighborsX1, neighborsY1, neighborsZ1]),
+            np.concatenate([neighborsX2, neighborsY2, neighborsZ2]),
+        ])
+
+    ## Generate cell nodes
+    ## NOT IMPLEMENTED IN PYRST
+
+    ## Assemble grid object
+    G = Grid()
+    G.cells.num = numCells
+    G.cells.facePos = np.arange(0, (numCells+1)*6-1, 6)
+    G.cells.indexMap = np.arange(0, numCells)
+    G.cells.faces = cellFaces
+    G.faces.num = numFaces
+    G.faces.nodePos = np.arange(0, (numFaces+1)*4-1, 4)
+    G.faces.neighbors = neighbors
+    G.faces.tag = np.zeros((numFaces,1))
+    G.faces.nodes = faceNodes
+    G.nodes.num = numNodes
+    G.nodes.coords = coords
+    G.cartDims = cellDim
+
+    return G
 
 def cartGrid(cellDim, physDim=None):
     """Constructs 2D or 3D Cartesian grid in physical space.

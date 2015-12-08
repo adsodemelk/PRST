@@ -68,12 +68,12 @@ def loadMRSTGrid(matfile, variablename="G"):
     # Matlab saves the gridType either as string or array of strings, depending
     # on the number of grid types. We use "gridType" since type is a Python
     # keyword.
-    if isinstance(M.type, str):
+    if M.type.__class__.__name__ in ["str", "unicode"]: # Python 2/3 compatibility
         G.gridType = set([M.type])
     elif isinstance(M.type, np.ndarray):
         G.gridType = set(M.type)
     else:
-        raise ValueError("gridType has unknown type")
+        raise ValueError("gridType has unknown type " + M.type.__class__.__name__)
     G.gridDim = M.griddim
 
     return G
