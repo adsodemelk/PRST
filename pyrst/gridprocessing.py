@@ -5,6 +5,8 @@ from __future__ import unicode_literals
 
 import numpy as np
 
+__all__ = ["Grid", "tensorGrid", "cartGrid"]
+
 class Grid:
     """TODO: Copy "grid_structure" help from MRST here"""
     class Cells:
@@ -114,6 +116,9 @@ class Grid:
         print("    gridType", s[G.gridType == V.gridType])
         print("    gridDim", s[G.gridDim == V.gridDim])
 
+##############################################################################
+# GRID CONSTRUCTORS
+##############################################################################
 
 def tensorGrid(x, y, z=None, depthz=None):
     """Construct Cartesian grid with variable physical cell sizes.
@@ -170,6 +175,7 @@ def tensorGrid(x, y, z=None, depthz=None):
     G.gridDim = len(G.cartDims)
 
     return G
+
 
 def _tensorGrid2D(x, y, depthz=None):
     # Check input data

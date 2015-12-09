@@ -2,11 +2,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
+import six
 
 from scipy.io import loadmat
 import numpy as np
 
 from pyrst.gridprocessing import Grid
+
+__all__ = ["loadMRSTGrid",]
 
 def loadMRSTGrid(matfile, variablename="G"):
     """Loads MRST grid as PyRST grid.
@@ -41,7 +44,6 @@ def loadMRSTGrid(matfile, variablename="G"):
     FLOAT_DTYPE = np.float64
 
     data = loadmat(matfile, squeeze_me=True, struct_as_record=False)
-    print("variablename=",variablename)
     M = data[variablename] # MRST grid data, one-indexed
 
     G = Grid()
@@ -51,7 +53,7 @@ def loadMRSTGrid(matfile, variablename="G"):
     try:
         G.cells.indexMap = M.cells.indexMap.astype(INT_DTYPE) - 1
     except AttributeError:
-        print("Info: Loaded grid has no indexMap")
+        print("Info: Loaded grid has no indexMap") # LOG
 
     G.faces.num = M.faces.num
     G.faces.nodePos = M.faces.nodePos.astype(INT_DTYPE) - 1
@@ -64,11 +66,11 @@ def loadMRSTGrid(matfile, variablename="G"):
     try:
         G.cartDims = M.cartDims.astype(INT_DTYPE)
     except AttributeError:
-        print("Info: Loaded grid has no cartDims")
+        print("Info: Loaded grid has no cartDims") # LOG
     # Matlab saves the gridType either as string or array of strings, depending
     # on the number of grid types. We use "gridType" since type is a Python
     # keyword.
-    if M.type.__class__.__name__ in ["str", "unicode"]: # Python 2/3 compatibility
+    if isinstance(M.type, six.string_types):
         G.gridType = set([M.type])
     elif isinstance(M.type, np.ndarray):
         G.gridType = set(M.type)
