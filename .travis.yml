@@ -18,8 +18,9 @@ before_install:
 
 # Install packages
 install:
-    - conda install --yes python=$TRAVIS_PYTHON_VERSION numpy scipy six pytest
+    - conda install --yes python=$TRAVIS_PYTHON_VERSION numpy scipy six pytest pip
     - conda install --yes -c https://conda.anaconda.org/bokeh pytest-cov
+    - pip install numpy_groupies
 
 # Run test
 script:
