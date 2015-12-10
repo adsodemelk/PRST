@@ -26,4 +26,5 @@ script:
     - py.test
 
 after_success:
+    - pip install coveralls
     - coveralls
