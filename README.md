@@ -1,7 +1,7 @@
 # Python Reservoir Simulation Toolbox
 
-[![Build Status](https://travis-ci.org/roessland/PyRST.svg?branch=master)](https://travis-ci.org/roessland/PyRST)
-[![Coverage Status](https://coveralls.io/repos/roessland/PyRST/badge.svg?branch=master&service=github)](https://coveralls.io/github/roessland/PyRST?branch=master)
+[![Build Status](https://travis-ci.org/roessland/PyRST.png?branch=master)](https://travis-ci.org/roessland/PyRST)
+[![Coverage Status](https://coveralls.io/repos/roessland/PyRST/badge.png?branch=master&service=github)](https://coveralls.io/github/roessland/PyRST?branch=master)
 
 The Python Reservoir Simulation Toolbox is a Python version of the MATLAB
 Reservoir Simulation Toolbox. The goal is to clone the functionality found in
