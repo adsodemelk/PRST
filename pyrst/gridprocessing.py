@@ -5,7 +5,7 @@ from __future__ import unicode_literals
 
 import numpy as np
 
-__all__ = ["Grid", "tensorGrid", "cartGrid"]
+__all__ = ["Grid", "tensorGrid", "cartGrid", "computeGeometry", "findNeighbors"]
 
 class Grid:
     """TODO: Copy "grid_structure" help from MRST here"""
@@ -499,3 +499,37 @@ def cartGrid(cellDim, physDim=None):
     G.gridType.add("cartGrid")
 
     return G
+
+
+def computeGeometry(G):
+    pass
+
+
+def findNeighbors(G):
+    """Finds plausible values for the G.faces.neighbors array.
+
+    Synopsis:
+        G.faces.neighbors = findNeighbors(G)
+
+    Arguments:
+        G (Grid): PyRST Grid object
+
+    """
+    # Internal faces
+    cellNumbers = rldecode(np.arange(0, G.cells.num), np.diff(G.cells.facePos))
+    print(G.cells.faces[113], G.cells.faces[54])
+    # use mergesort to obtain same j array as in MRST
+    j = np.argsort(G.cells.faces, kind='mergesort')
+    cellFaces = G.cells.faces[j]
+    cellNumbers = cellNumbers[j]
+    halfFaces = np.where(cellFaces[:-1] == cellFaces[1:])[0]
+    N = -np.ones([G.faces.num, 2], dtype=np.int)
+    N[cellFaces[halfFaces],0] = cellNumbers[halfFaces]
+    N[cellFaces[halfFaces+1],1] = cellNumbers[halfFaces+1]
+
+    # Boundary faces
+    isBoundary = np.ones(cellNumbers.size, dtype=np.bool)
+    isBoundary[halfFaces] = False
+    isBoundary[halfFaces+1] = False
+    N[cellFaces[isBoundary], 0] = cellNumbers[isBoundary]
+    return N

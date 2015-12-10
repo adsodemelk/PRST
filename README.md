@@ -49,8 +49,11 @@ The installation procedure used for automatic deployments (Travis CS) is the fol
     conda update conda
 
     # Install Conda packages necessary
-    conda install python=2.7 numpy scipy six pytest
+    conda install python=2.7 numpy scipy six pytest pip
     conda install -c https://conda.anaconda.org/bokeh pytest-cov
+
+    # Install pip packages necessary (using conda's pip!)
+    pip install numpy_groupies
 
     # Run tests to see that everything is working correctly
     cd PyRST

@@ -10,6 +10,7 @@ from pyrst.utils import rlencode, rldecode
 
 
 class Test_rlencode:
+    """See also doctests in utils.py"""
     def test_example(self):
         A = np.array([
             [1,2,3,4],
@@ -50,5 +51,7 @@ class Test_rlencode:
         assert np.array_equal(A_rl, np.array([1,4,5]))
         assert np.array_equal(n, np.array([4,2,1]))
 
+
 class Test_rldecode:
+    """See doctests in utils.py"""
     pass

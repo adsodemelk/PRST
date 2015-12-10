@@ -1,7 +1,7 @@
 % 2D triangle grid for testing computeGeometry
 [x, y] = meshgrid(0:10, 0:8);
-x(2:8, 2:10) = x(2:8, 2:10) + .25 * randn(7,9);
-y(2:8, 2:10) = y(2:8, 2:10) + .25 * randn(7,9);
+x(2:8, 2:10) = x(2:8, 2:10) + .35;
+y(2:8, 2:10) = y(2:8, 2:10) + .20;
 
 G = triangleGrid([x(:) y(:)]);
 G = computeGeometry(G);
