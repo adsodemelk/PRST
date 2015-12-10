@@ -1,4 +1,5 @@
 language: python
+sudo: false
 python:
     - 2.7
 
@@ -12,8 +13,8 @@ before_install:
     - export PATH=/home/travis/miniconda2/bin:$PATH
     - conda update --yes conda
     # Travis CI-related
-    - sudo rm -rf /dev/shm
-    - sudo ln -s /run/shm /dev/shm
+    #- sudo rm -rf /dev/shm
+    #- sudo ln -s /run/shm /dev/shm
 
 # Install packages
 install:
@@ -23,3 +24,6 @@ install:
 # Run test
 script:
     - py.test
+
+after_success:
+    - coveralls
