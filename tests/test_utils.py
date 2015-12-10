@@ -8,8 +8,6 @@ import numpy as np
 
 from pyrst.utils import rlencode, rldecode
 
-class Test_rldecode:
-    pass
 
 class Test_rlencode:
     def test_example(self):
@@ -52,3 +50,5 @@ class Test_rlencode:
         assert np.array_equal(A_rl, np.array([1,4,5]))
         assert np.array_equal(n, np.array([4,2,1]))
 
+class Test_rldecode:
+    pass
