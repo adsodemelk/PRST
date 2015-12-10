@@ -8,8 +8,8 @@ notifications:
 before_install:
     - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
     - chmod +x miniconda.sh
-    - ./miniconda.sh -b
-    - export PATH=/home/travis/miniconda/bin:$PATH
+    - ./miniconda.sh -b -f /home/travis/miniconda2
+    - export PATH=/home/travis/miniconda2/bin:$PATH
     - conda update --yes conda
     # Travis CI-related
     - sudo rm -rf /dev/shm
@@ -17,7 +17,8 @@ before_install:
 
 # Install packages
 install:
-    - conda install --yes python=$TRAVIS_PYTHON_VERSION numpy scipy pytest
+    - conda install --yes python=$TRAVIS_PYTHON_VERSION numpy scipy six pytest
+    - conda install --yes python=$TRAVIS_PYTHON_VERSION https://conda.anaconda.org/bokeh pytest-cov
 
 # Run test
 script:
