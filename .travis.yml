@@ -18,7 +18,7 @@ before_install:
 # Install packages
 install:
     - conda install --yes python=$TRAVIS_PYTHON_VERSION numpy scipy six pytest
-    - conda install --yes python=$TRAVIS_PYTHON_VERSION https://conda.anaconda.org/bokeh pytest-cov
+    - conda install --yes -c https://conda.anaconda.org/bokeh pytest-cov
 
 # Run test
 script:
