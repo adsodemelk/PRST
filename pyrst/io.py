@@ -7,7 +7,7 @@ import six
 from scipy.io import loadmat
 import numpy as np
 
-from pyrst.gridprocessing import Grid
+import pyrst.gridprocessing
 
 __all__ = ["loadMRSTGrid",]
 
@@ -46,7 +46,7 @@ def loadMRSTGrid(matfile, variablename="G"):
     data = loadmat(matfile, squeeze_me=True, struct_as_record=False)
     M = data[variablename] # MRST grid data, one-indexed
 
-    G = Grid()
+    G = pyrst.gridprocessing.Grid()
     G.cells.num = M.cells.num
     G.cells.facePos = M.cells.facePos.astype(INT_DTYPE) - 1
     G.cells.faces = M.cells.faces.astype(INT_DTYPE) - 1

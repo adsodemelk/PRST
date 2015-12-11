@@ -4,9 +4,11 @@ x(2:8, 2:10) = x(2:8, 2:10) + .35;
 y(2:8, 2:10) = y(2:8, 2:10) + .20;
 
 G = triangleGrid([x(:) y(:)]);
-G = computeGeometry(G);
 plotGrid(G);
 save('computeGeometry_triangleGrid2D.mat' ,'G', '-v7');
+
+G = computeGeometry(G);
+save('computeGeometry_triangleGrid2D_expected.mat' ,'G', '-v7');
 %V = pebi(G);
 %plotCellData(V, diff(V.cells.facePos));
 %hcb = colorbar
