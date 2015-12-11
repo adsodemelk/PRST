@@ -23,6 +23,18 @@ class TestGrid:
         assert not hasattr(V, "cartDims")
         assert G != V
 
+    def test_equal_without_indexMap(self):
+        V = loadMRSTGrid("tests/test_gridprocessing/grid_equal_without_indexMap.mat", "V")
+        V == V
+
+    def test_equal_except_indexMap(self):
+        G = cartGrid(np.array([4, 5]))
+        V = cartGrid(np.array([4, 5]))
+        assert hasattr(G.cells, "indexMap")
+        del G.cells.indexMap
+        assert not hasattr(G.cells, "indexMap")
+        assert G != V
+
     def test_unequal_grids_cellDim(self):
         G = cartGrid(np.array([4, 5]))
         V = cartGrid(np.array([4, 6]))
@@ -144,6 +156,7 @@ class TestCartGrid2D:
         G_pyrst = cartGrid(np.array([3, 5]), np.array([1, 1]))
         assert G_mrst == G_pyrst
 
+
 class TestCartGrid3D:
 
     def test_compare_MRST_simple(self):
@@ -151,3 +164,25 @@ class TestCartGrid3D:
         G_mrst = loadMRSTGrid("tests/test_gridprocessing/cartGrid3D_simple.mat")
         G_pyrst = cartGrid(np.array([3, 5, 7]), np.array([1, 1, 3]))
         assert G_mrst == G_pyrst
+
+
+class TestComputeGeometry:
+
+    def test_compare_MRST_triangleGrid2D(self):
+        G_mrst = loadMRSTGrid("tests/test_gridprocessing/computeGeometry_triangleGrid2D_expected.mat")
+        G_pyrst = loadMRSTGrid("tests/test_gridprocessing/computeGeometry_triangleGrid2D.mat")
+        computeGeometry(G_pyrst)
+        assert G_mrst == G_pyrst
+
+    def test_compare_MRST_triangleGrid3D(self):
+        G_mrst = loadMRSTGrid("tests/test_gridprocessing/computeGeometry_triangleGrid3D_expected.mat")
+        G_pyrst = loadMRSTGrid("tests/test_gridprocessing/computeGeometry_triangleGrid3D.mat")
+        computeGeometry(G_pyrst)
+        assert G_mrst == G_pyrst
+
+    def test_findNeighbors(self):
+        G_pyrst = loadMRSTGrid("tests/test_gridprocessing/computeGeometry_findNeighbors2D.mat")
+        with pytest.raises(ValueError):
+            computeGeometry(G_pyrst)
+
+

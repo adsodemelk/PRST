@@ -5,13 +5,13 @@ from __future__ import unicode_literals
 
 import numpy as np
 import scipy
-import numpy_groupies as npg
+from numpy_groupies.aggregate_numpy import aggregate
 
 import pyrst
 import pyrst.io
 import pyrst.utils
 
-__all__ = ["Grid", "tensorGrid", "cartGrid", "computeGeometry", "findNeighbors"]
+__all__ = ["Grid", "tensorGrid", "cartGrid", "computeGeometry"]
 
 class Grid(object):
     """
@@ -233,7 +233,10 @@ class Grid(object):
         """
         if ((G.cells.num != V.cells.num) or
            (not np.array_equal(G.cells.facePos, V.cells.facePos)) or
-           (not np.array_equal(G.cells.indexMap, V.cells.indexMap)) or
+           (
+               hasattr(G.cells, "indexMap") and hasattr(V.cells, "indexMap") and
+               not np.array_equal(G.cells.indexMap, V.cells.indexMap)
+           ) or
            (not np.array_equal(G.cells.faces, V.cells.faces)) or
            (G.faces.num != V.faces.num) or
            (not np.array_equal(G.faces.nodePos, V.faces.nodePos)) or
@@ -246,6 +249,9 @@ class Grid(object):
            ) or
            (G.gridType != V.gridType) or
            (G.gridDim != V.gridDim)):
+            return False
+
+        if hasattr(G.cells, "indexMap") ^ hasattr(V.cells, "indexMap"):
             return False
 
         if hasattr(G, "cartDims") and hasattr(V, "cartDims"):
@@ -261,6 +267,8 @@ class Grid(object):
 
     def _cmp(G, V):
         """Shows attributes comparions betwen two grids. For debugging.
+
+        Does NOT (yet) compare attributes computed by computeGeometry.
 
         Example:
 
@@ -730,14 +738,14 @@ def computeGeometry(G, suppressNeighborsWarning=False, hingenodes=None):
 
     ## Possibly find neighbors
     if suppressNeighborsWarning:
-        G.faces.neighbors = findNeighbors(G)
-        G = findNormalDirections(G)
+        G.faces.neighbors = _findNeighbors(G)
+        G = _findNormalDirections(G)
     else:
         if not hasattr(G.faces, "neighbors"):
             pyrst.log.warn("No field faces.neighbors found. "
                    + "Adding plausible values... proceed with caution!")
-            G.faces.neighbors = findNeighbors(G)
-            G = findNormalDirections(G)
+            G.faces.neighbors = _findNeighbors(G)
+            G = _findNormalDirections(G)
 
     ## Main part
     if G.gridDim == 3:
@@ -862,10 +870,10 @@ def computeGeometry(G, suppressNeighborsWarning=False, hingenodes=None):
         cCenter = np.zeros([G.cells.num, 2])
 
         # npg.aggregate is similar to accumarray in MATLAB
-        cCenter[:,0] = npg.aggregate(cellNumbers,
+        cCenter[:,0] = aggregate(cellNumbers,
                 faceCentroids[G.cells.faces, 0]) / numFaces
 
-        cCenter[:,1] = npg.aggregate(cellNumbers,
+        cCenter[:,1] = aggregate(cellNumbers,
                 faceCentroids[G.cells.faces, 1]) / numFaces
 
         a = G.nodes.coords[cellEdges[:,0],:] - cCenter[cellNumbers,:]
@@ -874,14 +882,14 @@ def computeGeometry(G, suppressNeighborsWarning=False, hingenodes=None):
 
         subCentroid = (  cCenter[cellNumbers,:]
                        + 2*faceCentroids[G.cells.faces,:])/3
-        cellVolumes = npg.aggregate(cellNumbers, subArea)
+        cellVolumes = aggregate(cellNumbers, subArea)
 
         cellCentroids = np.zeros([G.cells.num, 2], dtype=np.float64)
 
-        cellCentroids[:,0] = npg.aggregate(
+        cellCentroids[:,0] = aggregate(
                 cellNumbers, subArea * subCentroid[:,0]) / cellVolumes
 
-        cellCentroids[:,1] = npg.aggregate(
+        cellCentroids[:,1] = aggregate(
                 cellNumbers, subArea * subCentroid[:,1]) / cellVolumes
 
     elif G.gridDim == 2 and G.nodes.coords.shape[1] == 3:
@@ -906,11 +914,11 @@ def computeGeometry(G, suppressNeighborsWarning=False, hingenodes=None):
     return G
 
 
-def findNeighbors(G):
+def _findNeighbors(G):
     """Finds plausible values for the G.faces.neighbors array.
 
     Synopsis:
-        G.faces.neighbors = findNeighbors(G)
+        G.faces.neighbors = _findNeighbors(G)
 
     Arguments:
         G (Grid): PyRST Grid object
@@ -934,3 +942,20 @@ def findNeighbors(G):
     isBoundary[halfFaces+1] = False
     N[cellFaces[isBoundary], 0] = cellNumbers[isBoundary]
     return N
+
+def _findNormalDirections(G):
+    """
+    Detects neighborship based on normal directions.
+    """
+    if G.gridDim != 3 or G.nodes.coords.shape[1] != 3:
+        raise ValueError("Detecting neighborship based on normal directions "
+                        +"is only supported for 3D grids.")
+
+    # Assume convex faces. Compute average of node coordinates.
+    faceCenters = 0
+    # TODO NOT COMPLETE
+
+def _averageCoordinates(n, c):
+    no = pyrst.utils.rldecode(np.arange(n.size), n)
+    pass
+    # TODO NOT COMPLETE

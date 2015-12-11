@@ -7,6 +7,7 @@ import six
 from scipy.io import loadmat
 import numpy as np
 
+import pyrst
 import pyrst.gridprocessing
 
 __all__ = ["loadMRSTGrid",]
@@ -50,14 +51,35 @@ def loadMRSTGrid(matfile, variablename="G"):
     G.cells.num = M.cells.num
     G.cells.facePos = M.cells.facePos.astype(INT_DTYPE) - 1
     G.cells.faces = M.cells.faces.astype(INT_DTYPE) - 1
+
+    # computeGeometry attributes may not exist
     try:
         G.cells.indexMap = M.cells.indexMap.astype(INT_DTYPE) - 1
     except AttributeError:
-        print("Info: Loaded grid has no indexMap") # LOG
+        pyrst.log.info("Loaded grid has no cells.indexMap")
+    try:
+        G.cells.volumes = M.cells.volumes.astype(FLOAT_DTYPE)
+    except AttributeError:
+        pyrst.log.info("Loaded grid has no cells.volumes")
+    try:
+        G.cells.centroids = M.cells.centroids.astype(FLOAT_DTYPE)
+    except AttributeError:
+        pyrst.log.info("Loaded grid has no cells.centroids")
+    try:
+        G.faces.areas = M.faces.areas.astype(FLOAT_DTYPE)
+    except AttributeError:
+        pyrst.log.info("Loaded grid has no faces.areas")
+    try:
+        G.faces.centroids = M.faces.centroids.astype(FLOAT_DTYPE)
+    except AttributeError:
+        pyrst.log.info("Loaded grid has no faces.centroids")
 
     G.faces.num = M.faces.num
     G.faces.nodePos = M.faces.nodePos.astype(INT_DTYPE) - 1
-    G.faces.neighbors = M.faces.neighbors.astype(INT_DTYPE) - 1
+    try:
+        G.faces.neighbors = M.faces.neighbors.astype(INT_DTYPE) - 1
+    except AttributeError:
+        pyrst.log.warn("Loaded grid has no faces.neighbors")
     G.faces.nodes = M.faces.nodes.astype(INT_DTYPE) - 1
 
     G.nodes.num = M.nodes.num
