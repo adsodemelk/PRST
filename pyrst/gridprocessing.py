@@ -822,7 +822,7 @@ def computeGeometry(G, findNeighbors=False, hingenodes=None):
 
         # Computation above does not make sense for faces with zero area
         zeroAreaIndices = np.where(faceAreas <= 0)
-        if any(zeroAreaIndices):
+        if np.any(zeroAreaIndices):
             pyrst.log.warning("Faces with zero area detected. Such faces should be"
                       + "removed before calling computeGeometry")
 
@@ -873,6 +873,8 @@ def computeGeometry(G, findNeighbors=False, hingenodes=None):
             lastIndex += cellNumFaces
 
     elif G.gridDim == 2 and G.nodes.coords.shape[1] == 2:
+        # Sometimes G.cells.faces has a second column with face directions.
+        # So we retrieve the index column only.
         try:
             cellFaces = G.cells.faces[:,0]
         except IndexError:
@@ -938,6 +940,7 @@ def computeGeometry(G, findNeighbors=False, hingenodes=None):
 
     if not hasattr(G, "gridType"):
         pyrst.log.warning("Input grid has no type")
+        G.gridType = set()
 
     G.gridType.add("computeGeometry")
 

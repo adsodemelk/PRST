@@ -35,12 +35,19 @@ class TestGrid:
         assert not hasattr(G.cells, "indexMap")
         assert G != V
 
-    def test_equal_except_volumes(self):
+    def test_equal_except_volumes_del(self):
         G = cartGrid(np.array([4, 5]))
         V = cartGrid(np.array([4, 5]))
         computeGeometry(G)
         computeGeometry(V)
+        # Different values
+        G.cells.volumes[0] = 1000
+        assert G != V
+        # Attribute missing from G
         del G.cells.volumes
+        assert G != V
+        # Wrong shape
+        G.cells.volumes = np.zeros((5,5))
         assert G != V
 
     def test_unequal_grids_cellDim(self):
@@ -200,5 +207,43 @@ class TestComputeGeometry:
         G_mrst = loadMRSTGrid("tests/test_gridprocessing/computeGeometry_findNeighbors3D_expected.mat")
         G_mrst._cmp(G_pyrst)
         assert G_mrst == G_pyrst
+
+    def test_findNeighbors3D_force(self):
+        G_mrst = loadMRSTGrid("tests/test_gridprocessing/computeGeometry_findNeighbors3D_expected.mat")
+        computeGeometry(G_mrst, findNeighbors=True)
+
+    def test_hingenodes(self):
+        G_pyrst = cartGrid(np.array([3, 3, 3]))
+        with pytest.raises(NotImplementedError):
+            computeGeometry(G_pyrst, hingenodes=True)
+
+    def test_zeroAreaFaces(self):
+        G = cartGrid(np.array([3, 3, 3]))
+        # Set all node coordinates to the same...
+        G.nodes.coords = np.zeros(G.nodes.coords.shape)
+        computeGeometry(G)
+        # Faces have correct areas -- zero...
+        assert np.isclose(np.linalg.norm(G.faces.areas, 2), 0)
+        # ...but cells do not. They become NaN, possibly because of division by
+        # zero. This is incorrect behavior documented in the test.
+        assert np.isnan(G.cells.volumes[0])
+
+    def test_surfaceGrid(self):
+        G = cartGrid(np.array([3, 3, 3]))
+        G.gridDim = 2
+        with pytest.raises(NotImplementedError):
+            computeGeometry(G)
+
+    def test_invalidDimensions(self):
+        G = cartGrid(np.array([3, 3, 3]))
+        G.gridDim = 4
+        with pytest.raises(ValueError):
+            computeGeometry(G)
+
+    def test_no_gridType(self):
+        G = cartGrid(np.array([3, 3, 3]))
+        del G.gridType
+        computeGeometry(G)
+
 
 

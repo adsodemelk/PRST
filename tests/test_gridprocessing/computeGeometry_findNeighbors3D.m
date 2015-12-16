@@ -9,8 +9,9 @@ G = makeLayeredGrid(G, 3);
 
 
 plotGrid(G);
-save('computeGeometry_findNeighbors3D.mat' ,'G', '-v7');
 
 G.faces = rmfield(G.faces, 'neighbors');
+save('computeGeometry_findNeighbors3D.mat' ,'G', '-v7');
+
 G = computeGeometry(G);
 save('computeGeometry_findNeighbors3D_expected.mat' ,'G', '-v7');
