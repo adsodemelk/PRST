@@ -73,6 +73,10 @@ def loadMRSTGrid(matfile, variablename="G"):
         G.faces.centroids = M.faces.centroids.astype(FLOAT_DTYPE)
     except AttributeError:
         pyrst.log.info("Loaded grid has no faces.centroids")
+    try:
+        G.faces.normals = M.faces.normals.astype(FLOAT_DTYPE)
+    except AttributeError:
+        pyrst.log.info("Loaded grid has no faces.normals")
 
     G.faces.num = M.faces.num
     G.faces.nodePos = M.faces.nodePos.astype(INT_DTYPE) - 1

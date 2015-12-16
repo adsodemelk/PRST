@@ -260,6 +260,27 @@ class Grid(object):
         elif hasattr(G, "cartDims") or hasattr(V, "cartDims"):
             return False
 
+        # computeGeometry-attributes are compared approximately
+        for obj1, obj2, attr in [
+                (G.cells, V.cells, "volumes"),
+                (G.cells, V.cells, "centroids"),
+                (G.faces, V.faces, "areas"),
+                (G.faces, V.faces, "normals"),
+                (G.faces, V.faces, "centroids")]:
+            if hasattr(obj1, attr) ^ hasattr(obj2, attr):
+                # One object has the attribute while the other doesn't
+                return False
+            if hasattr(obj1, attr) and hasattr(obj2, attr):
+                # Both objects have the attribute -- compare it
+                attr1, attr2 = getattr(obj1, attr), getattr(obj2, attr)
+                try:
+                    if not np.isclose(attr1, attr2).all():
+                        return False
+                except Exception as e:
+                    # TODO: Remove print debug
+                    print(e)
+                    return False
+
         return True
 
     def __ne__(G, V):
@@ -300,6 +321,7 @@ class Grid(object):
                   np.isclose(G.nodes.coords, V.nodes.coords).all()])
         print("    gridType", s[G.gridType == V.gridType])
         print("    gridDim", s[G.gridDim == V.gridDim])
+        print(" computeGeometry attributes:")
 
 ##############################################################################
 # GRID CONSTRUCTORS
@@ -400,7 +422,7 @@ def _tensorGrid2D(x, y, depthz=None):
     nodesFace1 = nodeIndices[:, :-1].ravel(order="F")
     nodesFace2 = nodeIndices[:, 1:].ravel(order="F")
     # Interleave the two arrays
-    faceNodesX = np.zeros((len(nodesFace1) + len(nodesFace2)))
+    faceNodesX = np.zeros((len(nodesFace1) + len(nodesFace2)), dtype=np.int32)
     faceNodesX[0::2] = nodesFace1
     faceNodesX[1::2] = nodesFace2
 
@@ -408,7 +430,7 @@ def _tensorGrid2D(x, y, depthz=None):
     nodesFace1 = nodeIndices[:-1, :].ravel(order="F")
     nodesFace2 = nodeIndices[1:, :].ravel(order="F")
     # Interleave the two arrays
-    faceNodesY = np.zeros((len(nodesFace1) + len(nodesFace2)))
+    faceNodesY = np.zeros((len(nodesFace1) + len(nodesFace2)), dtype=np.int32)
     faceNodesY[0::2] = nodesFace2
     faceNodesY[1::2] = nodesFace1
     # Note: Nodes need to be reversed to obtain normals pointing in positive
@@ -432,7 +454,7 @@ def _tensorGrid2D(x, y, depthz=None):
     facesNorth = facesY[:, 1:].ravel(order="F")  # north = 3
 
     assert len(facesNorth) == len(facesEast) == len(facesSouth) == len(facesWest)
-    cellFaces = np.zeros((4*len(facesWest), 2))
+    cellFaces = np.zeros((4*len(facesWest), 2), dtype=np.int32)
     cellFaces[:,0] = np.column_stack(
             (facesWest, facesSouth, facesEast, facesNorth)
         ).ravel()
@@ -565,7 +587,7 @@ def _tensorGrid3D(x, y, z, depthz=None):
     assert len(facesWest) == len(facesEast) == len(facesSouth) == len(facesNorth)
     assert len(facesNorth) == len(facesTop) == len(facesBottom)
     NUM_DIRECTIONS = 6
-    cellFaces = np.zeros([NUM_DIRECTIONS*len(facesWest), 2])
+    cellFaces = np.zeros([NUM_DIRECTIONS*len(facesWest), 2], dtype=np.int32)
     cellFaces[:,0] = np.column_stack([
             facesWest, facesEast, facesSouth, facesNorth, facesTop, facesBottom
         ]).ravel()
@@ -686,7 +708,7 @@ def cartGrid(cellDim, physDim=None):
     return G
 
 
-def computeGeometry(G, suppressNeighborsWarning=False, hingenodes=None):
+def computeGeometry(G, findNeighbors=False, hingenodes=None):
     """
     Compute and add geometry attributes to grid object.
 
@@ -695,6 +717,10 @@ def computeGeometry(G, suppressNeighborsWarning=False, hingenodes=None):
 
     Arguments:
         G (Grid): Grid object. Input argument is mutated.
+
+        findNeighbors (Optional[bool]):
+            Force finding the neighbors array even if it exists. Defaults to
+            False.
 
 
     Returns:
@@ -737,7 +763,7 @@ def computeGeometry(G, suppressNeighborsWarning=False, hingenodes=None):
     numFaces = G.faces.num
 
     ## Possibly find neighbors
-    if suppressNeighborsWarning:
+    if findNeighbors:
         G.faces.neighbors = _findNeighbors(G)
         G = _findNormalDirections(G)
     else:
@@ -847,6 +873,10 @@ def computeGeometry(G, suppressNeighborsWarning=False, hingenodes=None):
             lastIndex += cellNumFaces
 
     elif G.gridDim == 2 and G.nodes.coords.shape[1] == 2:
+        try:
+            cellFaces = G.cells.faces[:,0]
+        except IndexError:
+            cellFaces = G.cells.faces
         ## 2D grid in 2D space
         pyrst.log.info("Computing normals, areas and centroids")
         edges = G.faces.nodes.reshape([-1,2], order="C")
@@ -862,8 +892,8 @@ def computeGeometry(G, suppressNeighborsWarning=False, hingenodes=None):
         pyrst.log.info("Computing cell volumes and centroids")
         numFaces = np.diff(G.cells.facePos)
         cellNumbers = pyrst.utils.rldecode(np.arange(G.cells.num), numFaces)
-        cellEdges = edges[G.cells.faces,:]
-        r = G.faces.neighbors[G.cells.faces, 1] == cellNumbers
+        cellEdges = edges[cellFaces,:]
+        r = G.faces.neighbors[cellFaces, 1] == cellNumbers
         # swap the two columns
         cellEdges[r, 0], cellEdges[r, 1] = cellEdges[r, 1], cellEdges[r, 0]
 
@@ -871,17 +901,17 @@ def computeGeometry(G, suppressNeighborsWarning=False, hingenodes=None):
 
         # npg.aggregate is similar to accumarray in MATLAB
         cCenter[:,0] = aggregate(cellNumbers,
-                faceCentroids[G.cells.faces, 0]) / numFaces
+                faceCentroids[cellFaces, 0]) / numFaces
 
         cCenter[:,1] = aggregate(cellNumbers,
-                faceCentroids[G.cells.faces, 1]) / numFaces
+                faceCentroids[cellFaces, 1]) / numFaces
 
         a = G.nodes.coords[cellEdges[:,0],:] - cCenter[cellNumbers,:]
         b = G.nodes.coords[cellEdges[:,1],:] - cCenter[cellNumbers,:]
         subArea = 0.5 * (a[:,0]*b[:,1] - a[:,1] * b[:,0])
 
         subCentroid = (  cCenter[cellNumbers,:]
-                       + 2*faceCentroids[G.cells.faces,:])/3
+                       + 2*faceCentroids[cellFaces,:])/3
         cellVolumes = aggregate(cellNumbers, subArea)
 
         cellCentroids = np.zeros([G.cells.num, 2], dtype=np.float64)
@@ -926,10 +956,14 @@ def _findNeighbors(G):
     """
     # Internal faces
     cellNumbers = pyrst.utils.rldecode(np.arange(0, G.cells.num), np.diff(G.cells.facePos))
-    print(G.cells.faces[113], G.cells.faces[54])
     # use mergesort to obtain same j array as in MRST
-    j = np.argsort(G.cells.faces, kind='mergesort')
-    cellFaces = G.cells.faces[j]
+    # try/except to handle 1D and 2D arrays
+    try:
+        j = np.argsort(G.cells.faces[:,0], kind="mergesort")
+        cellFaces = G.cells.faces[j,0]
+    except IndexError:
+        j = np.argsort(G.cells.faces, kind="mergesort")
+        cellFaces = G.cells.faces[j]
     cellNumbers = cellNumbers[j]
     halfFaces = np.where(cellFaces[:-1] == cellFaces[1:])[0]
     N = -np.ones([G.faces.num, 2], dtype=np.int)
@@ -952,10 +986,44 @@ def _findNormalDirections(G):
                         +"is only supported for 3D grids.")
 
     # Assume convex faces. Compute average of node coordinates.
-    faceCenters = 0
-    # TODO NOT COMPLETE
+    faceCenters = _averageCoordinates(np.diff(G.faces.nodePos),
+                                      G.nodes.coords[G.faces.nodes,:])[0]
+
+    cellCenters, cellNumbers = _averageCoordinates(
+        np.diff(G.cells.facePos), faceCenters[G.cells.faces[:,0], :])
+
+    # Compute triple product v1 x v2 . v3 of vectors
+    # v1 = faceCenters - cellCenters
+    # v2 = n1 - fc
+    # v3 = n2 - n1
+    # n1 and n2 being the first and second nodes of the face. Triple product
+    # should be positive for half-faces with positive sign.
+
+    nodes1 = G.nodes.coords[G.faces.nodes[G.faces.nodePos[:-1]    ], :]
+    nodes2 = G.nodes.coords[G.faces.nodes[G.faces.nodePos[:-1] + 1], :]
+
+    v1 = faceCenters[G.cells.faces[:,0], :] - cellCenters[cellNumbers]
+    v2 = nodes1[G.cells.faces[:,0], :] - faceCenters[G.cells.faces[:,0], :]
+    v3 = nodes2[G.cells.faces[:,0], :] - nodes1[G.cells.faces[:,0], :]
+
+    a = np.sum(np.cross(v1, v2) * v3, axis=1)
+    sgn = 2 * (G.faces.neighbors[G.cells.faces[:,0], 0] == cellNumbers) - 1
+
+    i = aggregate(G.cells.faces[:,0], a * sgn) < 0
+    G.faces.neighbors[i,0], G.faces.neighbors[i,1] = \
+            G.faces.neighbors[i,1], G.faces.neighbors[i,0]
+
+    return G
 
 def _averageCoordinates(n, c):
     no = pyrst.utils.rldecode(np.arange(n.size), n)
-    pass
-    # TODO NOT COMPLETE
+    # csr_matrix((data, (row_ind, col_ind)), [shape=(M, N)])
+    c1 = scipy.sparse.csr_matrix(
+            (np.ones(no.size), (no, np.arange(no.size)))
+        )
+
+    c2 = np.hstack((c, np.ones([c.shape[0], 1])))
+    c3 = c1 * c2
+    # Divide coordinate columns with final column, and remove the final column
+    c4 = (c3[:, :-1] / c3[:, -1][:,np.newaxis])
+    return c4, no

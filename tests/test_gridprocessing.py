@@ -35,6 +35,14 @@ class TestGrid:
         assert not hasattr(G.cells, "indexMap")
         assert G != V
 
+    def test_equal_except_volumes(self):
+        G = cartGrid(np.array([4, 5]))
+        V = cartGrid(np.array([4, 5]))
+        computeGeometry(G)
+        computeGeometry(V)
+        del G.cells.volumes
+        assert G != V
+
     def test_unequal_grids_cellDim(self):
         G = cartGrid(np.array([4, 5]))
         V = cartGrid(np.array([4, 6]))
@@ -48,6 +56,7 @@ class TestGrid:
         G = cartGrid(np.array([4, 5]))
         V = cartGrid(np.array([4, 6]))
         G._cmp(V)
+
 
 
 class TestTensorGrid2D:
@@ -180,9 +189,16 @@ class TestComputeGeometry:
         computeGeometry(G_pyrst)
         assert G_mrst == G_pyrst
 
-    def test_findNeighbors(self):
+    def test_findNeighbors2D(self):
         G_pyrst = loadMRSTGrid("tests/test_gridprocessing/computeGeometry_findNeighbors2D.mat")
         with pytest.raises(ValueError):
             computeGeometry(G_pyrst)
+
+    def test_findNeighbors3D(self):
+        G_pyrst = loadMRSTGrid("tests/test_gridprocessing/computeGeometry_findNeighbors3D.mat")
+        computeGeometry(G_pyrst)
+        G_mrst = loadMRSTGrid("tests/test_gridprocessing/computeGeometry_findNeighbors3D_expected.mat")
+        G_mrst._cmp(G_pyrst)
+        assert G_mrst == G_pyrst
 
 
