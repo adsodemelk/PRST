@@ -80,7 +80,7 @@ class TestTensorGrid2D:
         x, y = self.get_simple_params_2d()
         G = tensorGrid(x, y)
         assert hasattr(G, "gridType")
-        assert "tensorGrid" in G.gridType
+        assert G.gridType[-1] == "tensorGrid"
 
     def test_gridDim_added(self):
         x, y = self.get_simple_params_2d()
@@ -105,6 +105,7 @@ class TestTensorGrid2D:
         G_pyrst = tensorGrid(x, y)
 
         # Compare all variables
+        print(G_mrst.gridType, G_pyrst.gridType)
         assert G_mrst == G_pyrst
 
 

@@ -97,9 +97,10 @@ def loadMRSTGrid(matfile, variablename="G"):
     # on the number of grid types. We use "gridType" since type is a Python
     # keyword.
     if isinstance(M.type, six.string_types):
-        G.gridType = set([M.type])
+        G.gridType = [M.type]
     elif isinstance(M.type, np.ndarray):
-        G.gridType = set(M.type)
+        # Convert to normal Python list for convenience
+        G.gridType = list(M.type)
     else:
         raise ValueError("gridType has unknown type " + M.type.__class__.__name__)
     G.gridDim = M.griddim

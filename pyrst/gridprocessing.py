@@ -38,15 +38,15 @@ class Grid(object):
             A structure specifying properties for each individual node (vertex)
             in the grid. See NODES below for details.
 
-        - G.gridType (set)
+        - G.gridType (list)
             A list of strings describing the history of grid constructor and
             modifier functions applied to the grid object. Example:
 
-                #>>> G = cartGrid(np.array([4, 4, 4]))
-                #>>> computeGeometry(G)
-                #>>> print(G.gridType)
-                #['cartGrid', 'computeGeometry']
-                # TODO: Fix example doctest
+                >>> G = cartGrid(np.array([4, 4, 4]))
+                >>> computeGeometry(G)
+                <pyrst.gridprocessing.Grid object at ...
+                >>> G.gridType == ["tensorGrid", "cartGrid", "computeGeometry"]
+                True
 
         - G.gridDim (int)
             The dimension of the grid, which in most cases will equal the
@@ -196,7 +196,7 @@ class Grid(object):
         pass
 
     def __init__(self):
-        self.gridType = set()
+        self.gridType = []
         self.cells = self.Cells()
         self.faces = self.Faces()
         self.nodes = self.Nodes()
@@ -376,7 +376,7 @@ def tensorGrid(x, y, z=None, depthz=None):
         G = _tensorGrid3D(x, y, z, depthz=depthz)
 
     # Record grid constructor in grid.
-    G.gridType.add("tensorGrid")
+    G.gridType.append("tensorGrid")
 
     # Record number of dimensions
     G.gridDim = len(G.cartDims)
@@ -703,7 +703,7 @@ def cartGrid(cellDim, physDim=None):
         raise ValueError("Only 2- and 3-dimensional grids are supported.")
 
     # Record grid constructor in grid
-    G.gridType.add("cartGrid")
+    G.gridType.append("cartGrid")
 
     return G
 
@@ -940,9 +940,9 @@ def computeGeometry(G, findNeighbors=False, hingenodes=None):
 
     if not hasattr(G, "gridType"):
         pyrst.log.warning("Input grid has no type")
-        G.gridType = set()
+        G.gridType = []
 
-    G.gridType.add("computeGeometry")
+    G.gridType.append("computeGeometry")
 
     return G
 

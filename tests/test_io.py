@@ -14,11 +14,11 @@ class TestLoadMRSTGrid:
 
     def test_single_grid_type(self):
         G = loadMRSTGrid("tests/test_io/expected_tensorGrid2D_1G.mat")
-        assert isinstance(G.gridType, set)
+        assert isinstance(G.gridType, list)
 
     def test_multiple_grid_types(self):
         G = loadMRSTGrid("tests/test_io/multiple_gridtypes.mat")
-        assert isinstance(G.gridType, set)
+        assert isinstance(G.gridType, list)
 
     def test_malformed_gridType(self):
         with pytest.raises(ValueError):
@@ -115,7 +115,7 @@ class TestLoadMRSTGrid:
         # cartDims
         assert G.cartDims[0] == 2 and G.cartDims[1] == 2
         assert "tensorGrid" in G.gridType
-        assert G.gridType == set(["tensorGrid"])
+        assert G.gridType == ["tensorGrid"]
         assert G.gridDim == 2
 
     def test_tensorGrid2D_V(self):
