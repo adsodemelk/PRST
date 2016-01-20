@@ -155,6 +155,14 @@ class TestTensorGrid3D:
 
 class TestCartGrid2D:
 
+    def test_accepts_list_and_array_gridDim(self):
+        G = cartGrid(np.array([4, 4]))
+        G = cartGrid([4, 4])
+
+    def test_accepts_list_and_array_physDim(self):
+        G = cartGrid(np.array([4, 4]), np.array([0.4, 0.4]))
+        G = cartGrid([4, 4], [0.4, 0.4])
+
     def test_nonpositive_cellDim(self):
         with pytest.raises(ValueError):
             G = cartGrid(np.array([0, 3]))

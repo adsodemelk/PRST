@@ -639,11 +639,11 @@ def cartGrid(cellDim, physDim=None):
         G = cartGrid(cellDim, physDim)
 
     Args:
-        cellDim (ndarray):
+        cellDim (ndarray or list):
             Specifies number of cells in each coordinate direction. Length must
             be 2 or 3.
 
-        physDim (Optional[ndarray]):
+        physDim (Optional[ndarray or list]):
             Specifies physical size of computational domain in meters.  Length
             must be same as celldim. Default value == celldim (i.e., each cell
             has physical dimension 1-by-1-by-1 meter).
@@ -681,6 +681,8 @@ def cartGrid(cellDim, physDim=None):
         grid_structure, tensorGrid, computeGeometry
 
     """
+    if not isinstance(cellDim, np.ndarray):
+        cellDim = np.array(cellDim)
     assert isinstance(cellDim, np.ndarray)
 
     if any(cellDim <= 0):
@@ -688,6 +690,8 @@ def cartGrid(cellDim, physDim=None):
 
     if physDim is None:
         physDim = cellDim
+    if not isinstance(physDim, np.ndarray):
+        physDim = np.array(physDim)
     assert isinstance(physDim, np.ndarray)
 
     if len(cellDim) == 3:
