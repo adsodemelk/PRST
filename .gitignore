@@ -68,3 +68,4 @@ venv*/
 
 # tmp files
 *.m~
+*.ipynb_checkpoints

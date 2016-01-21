@@ -8,6 +8,8 @@ import numpy as np
 
 from pyrst.utils import rlencode, rldecode
 
+from pyrst.utils.units import *
+
 
 class Test_rlencode:
     """See also doctests in utils.py"""
@@ -55,3 +57,8 @@ class Test_rlencode:
 class Test_rldecode:
     """See doctests in utils.py"""
     pass
+
+
+class Test_units:
+    def test_basic_units(self):
+        assert centi == 1/100

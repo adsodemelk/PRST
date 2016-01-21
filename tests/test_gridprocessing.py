@@ -64,7 +64,9 @@ class TestGrid:
         V = cartGrid(np.array([4, 6]))
         G._cmp(V)
 
-
+    def test_str(self):
+        G = cartGrid(np.array([4, 5]))
+        str(G)
 
 class TestTensorGrid2D:
 

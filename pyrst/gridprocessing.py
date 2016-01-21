@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
+import six
 
 import numpy as np
 import scipy
@@ -13,6 +14,7 @@ import pyrst.utils
 
 __all__ = ["Grid", "tensorGrid", "cartGrid", "computeGeometry"]
 
+@six.python_2_unicode_compatible
 class Grid(object):
     """
     Grid class used in Python Reservoir Simulation Toolbox.
@@ -322,6 +324,13 @@ class Grid(object):
         print("    gridType", s[G.gridType == V.gridType])
         print("    gridDim", s[G.gridDim == V.gridDim])
         print(" computeGeometry attributes:")
+
+    def __str__(G):
+        s = "<PyRST grid"
+        for key, val in six.iteritems(G.__dict__):
+            s += "\n  {}: {}".format(key, val)
+        s += "\n>"
+        return s
 
 ##############################################################################
 # GRID CONSTRUCTORS
