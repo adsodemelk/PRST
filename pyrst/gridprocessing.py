@@ -189,13 +189,16 @@ class Grid(object):
         routines such as plotGrid display the grid with a reversed z-axis.
     """
     class Cells(object):
-        pass
+        def __str__(self):
+            return str(self.__dict__.keys())
 
     class Faces(object):
-        pass
+        def __str__(self):
+            return str(self.__dict__.keys())
 
     class Nodes(object):
-        pass
+        def __str__(self):
+            return str(self.__dict__.keys())
 
     def __init__(self):
         self.gridType = []
