@@ -192,6 +192,17 @@ class TestCartGrid3D:
         G_pyrst = cartGrid(np.array([3, 5, 7]), np.array([1, 1, 3]))
         assert G_mrst == G_pyrst
 
+    def test_index_kind(self):
+        G = cartGrid([3, 5, 7])
+        for name, arr in [('facePos', G.cells.facePos),
+                          ('indexMap', G.cells.indexMap),
+                          ('faces', G.cells.faces),
+                          ('neighbors', G.faces.neighbors),
+                          ('nodes', G.faces.nodes),
+                          ('nodePos', G.faces.nodePos)]:
+            # Must be int or unsigned int.
+            assert arr.dtype.kind in ('i', 'u'), name + " is not integer type array"
+
 
 class TestComputeGeometry:
 

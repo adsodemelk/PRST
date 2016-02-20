@@ -75,9 +75,9 @@ class BoundaryCondition:
         self.type = None
         self.val = None
         self.sat = None
-        self.add(*args, **kwargs)
+        self.add(faces, types, values, sat)
 
-    def add(self, faces, types, values, sat=None)
+    def add(self, faces, types, values, sat=None):
         if len(faces) == 0:
             pyrst.log.warn("Empty list of boundary faces.")
             return
@@ -116,9 +116,9 @@ class BoundaryCondition:
 
 
 
-        self.faces = _create_or_append(self.face, faces)
+        self.face = _create_or_append(self.face, faces)
         self.type = _create_or_append(self.type, types)
-        self.value = _create_or_append(self.values, values)
+        self.val = _create_or_append(self.val, values)
         if sat is None:
             self.sat = None
         else:

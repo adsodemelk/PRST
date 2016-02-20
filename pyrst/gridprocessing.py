@@ -491,17 +491,17 @@ def _tensorGrid2D(x, y, depthz=None):
 
     G = Grid()
     G.cells.num = numCells
-    G.cells.facePos = np.arange(0, (numCells+1)*4-1, 4)
-    G.cells.indexMap = np.arange(0, numCells)
-    G.cells.faces = cellFaces
+    G.cells.facePos = np.arange(0, (numCells+1)*4-1, 4, dtype=np.int32)
+    G.cells.indexMap = np.arange(0, numCells, dtype=np.int32)
+    G.cells.faces = cellFaces.astype(np.int32)
     G.faces.num = numFaces
     G.faces.nodePos = np.arange(0, (numFaces+1)*2-1, 2)
-    G.faces.neighbors = neighbors
+    G.faces.neighbors = neighbors.astype(np.int32)
     G.faces.tag = np.zeros((numFaces, 1))
-    G.faces.nodes = faceNodes
+    G.faces.nodes = faceNodes.astype(np.int32)
     G.nodes.num = numNodes
     G.nodes.coords = coords
-    G.cartDims = cellDim
+    G.cartDims = cellDim.astype(np.int32)
 
     return G
 
@@ -629,17 +629,17 @@ def _tensorGrid3D(x, y, z, depthz=None):
     ## Assemble grid object
     G = Grid()
     G.cells.num = numCells
-    G.cells.facePos = np.arange(0, (numCells+1)*6-1, 6)
-    G.cells.indexMap = np.arange(0, numCells)
-    G.cells.faces = cellFaces
+    G.cells.facePos = np.arange(0, (numCells+1)*6-1, 6).astype(np.int32)
+    G.cells.indexMap = np.arange(0, numCells).astype(np.int32)
+    G.cells.faces = cellFaces.astype(np.int32)
     G.faces.num = numFaces
-    G.faces.nodePos = np.arange(0, (numFaces+1)*4-1, 4)
-    G.faces.neighbors = neighbors
+    G.faces.nodePos = np.arange(0, (numFaces+1)*4-1, 4).astype(np.int32)
+    G.faces.neighbors = neighbors.astype(np.int32)
     G.faces.tag = np.zeros((numFaces,1))
-    G.faces.nodes = faceNodes
+    G.faces.nodes = faceNodes.astype(np.int32)
     G.nodes.num = numNodes
     G.nodes.coords = coords
-    G.cartDims = cellDim
+    G.cartDims = cellDim.astype(np.int32)
 
     return G
 

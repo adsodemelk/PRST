@@ -36,12 +36,12 @@ class TestWellsAndBC:
         assert bc.face[0] == 120
         assert len(bc.face) == 1
         assert bc.type[0] == "pressure"
-        assert bc.value[0] == 10000000
+        assert bc.val[0] == 10000000
 
         bc = BoundaryCondition(ix, "flux", -1)
         assert bc.face[0] == 120
         assert len(bc.face) == 1
-        assert bc.type[0] == "pressure"
+        assert bc.type[0] == "flux"
 
     def test_add_BoundaryCondition(self):
         pass
