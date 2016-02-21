@@ -82,7 +82,7 @@ SciPy needs to be compiled when installed using `pip`, and this can take up to 3
 
 ## Windows installation
 
-Should be simple, but has not been tested yet.
+Use Anaconda2 or Miniconda2.
 
 
 ## Troubleshooting installation
@@ -106,7 +106,17 @@ code should be tested.
 
 ## License
 
-MRST is GPLv3-licensed, and since PyRST is a derivative work, it will also be
-GPLv3-licensed. TODO: Add license.
+MRST is GPLv3-licensed, and since PyRST is a derivative work, it is also
+GPLv3-licensed.
+
+
+## Publish to PyPI
+
+These steps are only needed by the maintainer of the PyPI package.
+
+    pip install twine wheel
+    git tag 0.0.1 # Version to be released
+    python setup.py sdist bdist_wheel
+    twine upload dist/*
 
 
