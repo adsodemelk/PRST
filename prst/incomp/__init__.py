@@ -1,7 +1,7 @@
 """
 Support for incompressible flow/transport problems
 
-Functions available in MRST, but not yet in PyRST:
+Functions available in MRST, but not yet in PRST:
     capPressureRHS      - Compute capillary pressure contribution to system RHS
     computeFacePressure - Compute face pressure using two-point flux approximation.
     computePressureRHS  - Compute right-hand side contributions to pressure linear system.

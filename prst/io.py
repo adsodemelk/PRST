@@ -7,13 +7,15 @@ import six
 from scipy.io import loadmat
 import numpy as np
 
-import pyrst
-import pyrst.gridprocessing
+from tvtk.api import tvtk
+
+import prst
+import prst.gridprocessing
 
 __all__ = ["loadMRSTGrid",]
 
 def loadMRSTGrid(matfile, variablename="G"):
-    """Loads MRST grid as PyRST grid.
+    """Loads MRST grid as PRST grid.
 
     The grid is saved in MATLAB using the command
 
@@ -31,7 +33,7 @@ def loadMRSTGrid(matfile, variablename="G"):
             something else than "G".
 
     Returns:
-        G - PyRST grid with zero indexing.
+        G - PRST grid with zero indexing.
 
     See the source code of this function to see which variables are modified to
     be zero-indexed. Some important consequences of zero-indexing are:
@@ -47,7 +49,7 @@ def loadMRSTGrid(matfile, variablename="G"):
     data = loadmat(matfile, squeeze_me=True, struct_as_record=False)
     M = data[variablename] # MRST grid data, one-indexed
 
-    G = pyrst.gridprocessing.Grid()
+    G = prst.gridprocessing.Grid()
     G.cells.num = M.cells.num
     G.cells.facePos = M.cells.facePos.astype(INT_DTYPE) - 1
     G.cells.faces = M.cells.faces.astype(INT_DTYPE) - 1
@@ -56,34 +58,34 @@ def loadMRSTGrid(matfile, variablename="G"):
     try:
         G.cells.indexMap = M.cells.indexMap.astype(INT_DTYPE) - 1
     except AttributeError:
-        pyrst.log.info("Loaded grid has no cells.indexMap")
+        prst.log.info("Loaded grid has no cells.indexMap")
     try:
         G.cells.volumes = M.cells.volumes.astype(FLOAT_DTYPE)
     except AttributeError:
-        pyrst.log.info("Loaded grid has no cells.volumes")
+        prst.log.info("Loaded grid has no cells.volumes")
     try:
         G.cells.centroids = M.cells.centroids.astype(FLOAT_DTYPE)
     except AttributeError:
-        pyrst.log.info("Loaded grid has no cells.centroids")
+        prst.log.info("Loaded grid has no cells.centroids")
     try:
         G.faces.areas = M.faces.areas.astype(FLOAT_DTYPE)
     except AttributeError:
-        pyrst.log.info("Loaded grid has no faces.areas")
+        prst.log.info("Loaded grid has no faces.areas")
     try:
         G.faces.centroids = M.faces.centroids.astype(FLOAT_DTYPE)
     except AttributeError:
-        pyrst.log.info("Loaded grid has no faces.centroids")
+        prst.log.info("Loaded grid has no faces.centroids")
     try:
         G.faces.normals = M.faces.normals.astype(FLOAT_DTYPE)
     except AttributeError:
-        pyrst.log.info("Loaded grid has no faces.normals")
+        prst.log.info("Loaded grid has no faces.normals")
 
     G.faces.num = M.faces.num
     G.faces.nodePos = M.faces.nodePos.astype(INT_DTYPE) - 1
     try:
         G.faces.neighbors = M.faces.neighbors.astype(INT_DTYPE) - 1
     except AttributeError:
-        pyrst.log.warn("Loaded grid has no faces.neighbors")
+        prst.log.warn("Loaded grid has no faces.neighbors")
     G.faces.nodes = M.faces.nodes.astype(INT_DTYPE) - 1
 
     G.nodes.num = M.nodes.num
@@ -106,3 +108,15 @@ def loadMRSTGrid(matfile, variablename="G"):
     G.gridDim = M.griddim
 
     return G
+
+def saveVtkUnstructuredGrid(vtkGrid, file_name):
+    """Writes vtkGrid to file. (.vtu XML format).
+
+    To create a vtkGrid from a PRST grid:
+
+        from prst.plotting import createVtkUnstructuredGrid
+        vtkGrid = createVtkUnstructuredGrid(G)
+    """
+    w = tvtk.XMLUnstructuredGridWriter(input=vtkGrid, file_name=file_name)
+    return w.write()
+

@@ -6,4 +6,4 @@ from __future__ import unicode_literals
 import pytest
 import numpy as np
 
-import pyrst
+import prst

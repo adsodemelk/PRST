@@ -13,10 +13,10 @@ Submodules:
 __all__ = ["incompressible", "utils"]
 
 class Fluid(object):
-    """Fluid structure used in PyRST.
+    """Fluid structure used in PRST.
 
 
-    PyRST's fluid representation is an object containing functions which
+    PRST's fluid representation is an object containing functions which
     compute fluid properties (e.g., density or viscosity), fluid phase
     saturations, and phase relative permeability curves. This representation
     supports generic implementations of derived quantities such as mobilities

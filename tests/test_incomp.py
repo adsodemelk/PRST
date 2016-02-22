@@ -6,8 +6,8 @@ from __future__ import unicode_literals
 import pytest
 import numpy as np
 
-from pyrst.utils.units import *
-from pyrst.incomp.fluid import SingleFluid
+from prst.utils.units import *
+from prst.incomp.fluid import SingleFluid
 
 
 class Test_Fluid(object):

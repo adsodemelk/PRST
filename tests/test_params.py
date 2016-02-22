@@ -6,20 +6,20 @@ from __future__ import unicode_literals
 import pytest
 import numpy as np
 
-import pyrst
-from pyrst import gridprocessing
-from pyrst.params.rock import Rock
-from pyrst.params.wells_and_bc import BoundaryCondition
+import prst
+from prst import gridprocessing
+from prst.params.rock import Rock
+from prst.params.wells_and_bc import BoundaryCondition
 
 class TestGravity:
 
     def test_gravity(self):
-        assert len(pyrst.params.gravity) == 3
+        assert len(prst.params.gravity) == 3
 
     def test_gravity_reset(self):
-        pyrst.params.gravity = np.array([0, 0, 0])
-        pyrst.params.gravity_reset()
-        assert np.linalg.norm(pyrst.params.gravity) > 9
+        prst.params.gravity = np.array([0, 0, 0])
+        prst.params.gravity_reset()
+        assert np.linalg.norm(prst.params.gravity) > 9
 
 class TestRock:
 

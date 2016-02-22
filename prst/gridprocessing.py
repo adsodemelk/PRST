@@ -8,9 +8,9 @@ import numpy as np
 import scipy
 from numpy_groupies.aggregate_numpy import aggregate
 
-import pyrst
-import pyrst.io
-import pyrst.utils
+import prst
+import prst.io
+import prst.utils
 
 __all__ = ["Grid", "tensorGrid", "cartGrid", "computeGeometry"]
 
@@ -46,7 +46,7 @@ class Grid(object):
 
                 >>> G = cartGrid(np.array([4, 4, 4]))
                 >>> computeGeometry(G)
-                <pyrst.gridprocessing.Grid object at ...
+                <prst.gridprocessing.Grid object at ...
                 >>> G.gridType == ["tensorGrid", "cartGrid", "computeGeometry"]
                 True
 
@@ -80,7 +80,7 @@ class Grid(object):
                 in the grid structure. The first column may be re-constructed
                 using the statement
 
-                    pyrst.util.rldecode(np.arange(G.cells.num),
+                    prst.util.rldecode(np.arange(G.cells.num),
                         np.diff(G.cells.facePos), axis=1)
                     TODO: Add test for this.
 
@@ -91,7 +91,7 @@ class Grid(object):
                 distinguished. Some ancillary utilites within the toolbox
                 depend on this specific semantic of `G.cells.faces[i,2]`, e.g.
                 to easily specify boundary conditions (functions `pside` and
-                `fluxside`). NOTE: These are not yet implemented in PyRST.
+                `fluxside`). NOTE: These are not yet implemented in PRST.
 
             - G.cells.indexMap (np.ndarray)
                 Maps internal to external grid cells (i.e., active cell numbers
@@ -103,7 +103,7 @@ class Grid(object):
                 of cell numbers to logical indices may be constructed using the
                 following statement in 2D
 
-                    % TODO: Create PyRST examples
+                    % TODO: Create PRST examples
 
                     [ij{1:2}] = ind2sub(dims, G.cells.indexMap(:));
                     ij        = [ij{:}];
@@ -145,7 +145,7 @@ class Grid(object):
                 the last column is stored. The first column can be constructed
                 using the statement
 
-                    pyrst.utils.rldecode(
+                    prst.utils.rldecode(
                         np.arange(G.faces.num, np.diff(G.faces.nodePos), axis=1)
 
             - G.faces.neighbors (np.ndarray)
@@ -159,7 +159,7 @@ class Grid(object):
             - G.faces.tag (np.ndarray)
                 Array with shape (G.faces.num,) of face tags. A tag is a
                 scalar. The exact semantics of this field is currently
-                undecided and subject to change in future releases of PyRST.
+                undecided and subject to change in future releases of PRST.
 
             - G.faces.areas (np.ndarray)
                 Array with shape (G.faces.num,) of face areas.
@@ -329,11 +329,45 @@ class Grid(object):
         print(" computeGeometry attributes:")
 
     def __str__(G):
-        s = "<PyRST grid"
+        s = "<PRST grid"
         for key, val in six.iteritems(G.__dict__):
             s += "\n  {}: {}".format(key, val)
         s += "\n>"
         return s
+
+    def computeFaceNodes(G):
+        """Compute array of face nodes.
+
+        Synopsis:
+            faceNodes = G.computeFaceNodes()
+
+        Arguments: None (Grid class method)
+
+        Returns: Python list of ndarrays. Each ndarray contains node indices
+        for a face.
+
+        Using the G.faces.nodePos attribute, calculate an explicit list of
+        nodes for each face. For example, the grid given by `G =
+        cartGrid([2,2,1])`.
+
+        has the G.faces.nodePos array
+
+            [0 4 8 12 16 20 24 28 32 36 40 44 48 52 56 60 64 68 72 76 80].
+
+        `G.computeFaceNodes()` will then return the Python list (!) of ndarrays
+
+             [[ 0,  1,  2,  3],
+              [ 4,  5,  6,  7],
+              [ 8,  9, 10, 11],
+              ...
+              [68, 69, 70, 71],
+              [72, 73, 74, 75],
+              [76, 77, 78, 79]].
+
+        This is useful since this is the format used by the MayaVi/VTK
+        visualization libraries.
+        """
+        return [np.arange(a, b) for a,b in zip(G.faces.nodePos[:-1], G.faces.nodePos[1:])]
 
 ##############################################################################
 # GRID CONSTRUCTORS
@@ -784,7 +818,7 @@ def computeGeometry(G, findNeighbors=False, hingenodes=None):
         G = _findNormalDirections(G)
     else:
         if not hasattr(G.faces, "neighbors"):
-            pyrst.log.warn("No field faces.neighbors found. "
+            prst.log.warn("No field faces.neighbors found. "
                    + "Adding plausible values... proceed with caution!")
             G.faces.neighbors = _findNeighbors(G)
             G = _findNormalDirections(G)
@@ -793,7 +827,7 @@ def computeGeometry(G, findNeighbors=False, hingenodes=None):
     if G.gridDim == 3:
         ## 3D grid
         assert G.nodes.coords.shape[1] == 3
-        faceNumbers = pyrst.utils.rldecode(np.arange(G.faces.num), np.diff(G.faces.nodePos))
+        faceNumbers = prst.utils.rldecode(np.arange(G.faces.num), np.diff(G.faces.nodePos))
         nodePos = G.faces.nodePos;
         nextNode = np.arange(1, G.faces.nodes.size+1)
         nextNode[nodePos[1:]-1] = nodePos[:-1]
@@ -801,7 +835,7 @@ def computeGeometry(G, findNeighbors=False, hingenodes=None):
         # Divide each face into sub-triangles all having one node as pCenter =
         # sum(nodes) / numNodes. Compute area-weighted normals, and add to
         # obtain approx face-normals. Compute resulting areas and centroids.
-        pyrst.log.info("Computing normals, areas and centroids...")
+        prst.log.info("Computing normals, areas and centroids...")
         # Construct a sparse matrix with zeros and ones.
         localEdge2Face = scipy.sparse.csr_matrix((np.ones(G.faces.nodes.size),
                 [np.arange(G.faces.nodes.size), faceNumbers]))
@@ -813,7 +847,7 @@ def computeGeometry(G, findNeighbors=False, hingenodes=None):
         pCenters = localEdge2Face.dot(pCenters)
 
         if hingenodes:
-            raise NotImplementedError("hingenodes are not yet supported in PyRST")
+            raise NotImplementedError("hingenodes are not yet supported in PRST")
 
         subNormals = np.cross(
                   G.nodes.coords[G.faces.nodes[nextNode],:]
@@ -839,13 +873,13 @@ def computeGeometry(G, findNeighbors=False, hingenodes=None):
         # Computation above does not make sense for faces with zero area
         zeroAreaIndices = np.where(faceAreas <= 0)
         if np.any(zeroAreaIndices):
-            pyrst.log.warning("Faces with zero area detected. Such faces should be"
+            prst.log.warning("Faces with zero area detected. Such faces should be"
                       + "removed before calling computeGeometry")
 
         # Divide each cell into sub-tetrahedra according to sub-triangles above,
         # all having one node as cCenter = sum(faceCentroids) / #faceCentroids
 
-        pyrst.log.info("Computing cell volumes and centroids")
+        prst.log.info("Computing cell volumes and centroids")
         cellVolumes = np.zeros(numCells)
         cellCentroids = np.zeros([numCells, 3])
 
@@ -896,7 +930,7 @@ def computeGeometry(G, findNeighbors=False, hingenodes=None):
         except IndexError:
             cellFaces = G.cells.faces
         ## 2D grid in 2D space
-        pyrst.log.info("Computing normals, areas and centroids")
+        prst.log.info("Computing normals, areas and centroids")
         edges = G.faces.nodes.reshape([-1,2], order="C")
         # Distance between edge nodes as a vector. "Length" is misleading.
         edgeLength =   G.nodes.coords[edges[:,1],:] \
@@ -907,9 +941,9 @@ def computeGeometry(G, findNeighbors=False, hingenodes=None):
         faceCentroids = np.average(G.nodes.coords[edges], axis=1)
         faceNormals = np.column_stack([edgeLength[:,1], -edgeLength[:,0]])
 
-        pyrst.log.info("Computing cell volumes and centroids")
+        prst.log.info("Computing cell volumes and centroids")
         numFaces = np.diff(G.cells.facePos)
-        cellNumbers = pyrst.utils.rldecode(np.arange(G.cells.num), numFaces)
+        cellNumbers = prst.utils.rldecode(np.arange(G.cells.num), numFaces)
         cellEdges = edges[cellFaces,:]
         r = G.faces.neighbors[cellFaces, 1] == cellNumbers
         # swap the two columns
@@ -955,7 +989,7 @@ def computeGeometry(G, findNeighbors=False, hingenodes=None):
     G.cells.centroids = cellCentroids
 
     if not hasattr(G, "gridType"):
-        pyrst.log.warning("Input grid has no type")
+        prst.log.warning("Input grid has no type")
         G.gridType = []
 
     G.gridType.append("computeGeometry")
@@ -970,11 +1004,11 @@ def _findNeighbors(G):
         G.faces.neighbors = _findNeighbors(G)
 
     Arguments:
-        G (Grid): PyRST Grid object
+        G (Grid): PRST Grid object
 
     """
     # Internal faces
-    cellNumbers = pyrst.utils.rldecode(np.arange(0, G.cells.num), np.diff(G.cells.facePos))
+    cellNumbers = prst.utils.rldecode(np.arange(0, G.cells.num), np.diff(G.cells.facePos))
     # use mergesort to obtain same j array as in MRST
     # try/except to handle 1D and 2D arrays
     try:
@@ -1035,7 +1069,7 @@ def _findNormalDirections(G):
     return G
 
 def _averageCoordinates(n, c):
-    no = pyrst.utils.rldecode(np.arange(n.size), n)
+    no = prst.utils.rldecode(np.arange(n.size), n)
     # csr_matrix((data, (row_ind, col_ind)), [shape=(M, N)])
     c1 = scipy.sparse.csr_matrix(
             (np.ones(no.size), (no, np.arange(no.size)))

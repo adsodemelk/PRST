@@ -6,8 +6,8 @@ from __future__ import unicode_literals
 import pytest
 import numpy as np
 
-from pyrst.gridprocessing import *
-from pyrst.io import loadMRSTGrid
+from prst.gridprocessing import *
+from prst.io import loadMRSTGrid
 
 
 class TestGrid:
@@ -101,14 +101,14 @@ class TestTensorGrid2D:
         # Load grid created in Matlab using tensorGrid([0 1 2], [0 1 2])
         G_mrst = loadMRSTGrid("tests/test_gridprocessing/expected_tensorGrid2D_1.mat")
 
-        # Create grid using PyRST
+        # Create grid using PRST
         x = np.array([0, 1, 2])
         y = np.array([0, 1, 2])
-        G_pyrst = tensorGrid(x, y)
+        G_prst = tensorGrid(x, y)
 
         # Compare all variables
-        print(G_mrst.gridType, G_pyrst.gridType)
-        assert G_mrst == G_pyrst
+        print(G_mrst.gridType, G_prst.gridType)
+        assert G_mrst == G_prst
 
 
 class TestTensorGrid3D:
@@ -120,24 +120,24 @@ class TestTensorGrid3D:
         # Load grid created in Matlab
         #    G = tensorGrid([1 2 3], [0.5, 1, 1.5], [10, 20], 'depthz', [ 1 2 3; 4 5 6; 7 8 9]);
         G_mrst = loadMRSTGrid("tests/test_gridprocessing/expected_tensorGrid3D_1.mat")
-        # Create grid using PyRST
+        # Create grid using PRST
         x = np.array([1, 2, 3])
         y = np.array([0.5, 1, 1.5])
         z = np.array([10, 20])
         depthz = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-        G_pyrst = tensorGrid(x, y, z, depthz=depthz)
-        assert G_mrst == G_pyrst
+        G_prst = tensorGrid(x, y, z, depthz=depthz)
+        assert G_mrst == G_prst
 
     def test_compare_MRST_with_depthz(self):
         # Load grid created in Matlab
         #    G = tensorGrid([1 2 3], [0.5, 1, 1.5], [10, 20])
         G_mrst = loadMRSTGrid("tests/test_gridprocessing/expected_tensorGrid3D_2.mat")
-        # Create grid using PyRST
+        # Create grid using PRST
         x = np.array([1, 2, 3])
         y = np.array([0.5, 1, 1.5])
         z = np.array([10, 20])
-        G_pyrst = tensorGrid(x, y, z)
-        assert G_mrst == G_pyrst
+        G_prst = tensorGrid(x, y, z)
+        assert G_mrst == G_prst
 
     def test_wrongly_sized_depthz(self):
         x, y, z = self.get_simple_params_3d()
@@ -180,8 +180,8 @@ class TestCartGrid2D:
         G_mrst = loadMRSTGrid("tests/test_gridprocessing/cartGrid2D_simple.mat")
 
         # Using numpy array parameters
-        G_pyrst = cartGrid(np.array([3, 5]), np.array([1, 1]))
-        assert G_mrst == G_pyrst
+        G_prst = cartGrid(np.array([3, 5]), np.array([1, 1]))
+        assert G_mrst == G_prst
 
 
 class TestCartGrid3D:
@@ -189,8 +189,8 @@ class TestCartGrid3D:
     def test_compare_MRST_simple(self):
         # G = cartGrid([3 5 7], [1 1 3]);
         G_mrst = loadMRSTGrid("tests/test_gridprocessing/cartGrid3D_simple.mat")
-        G_pyrst = cartGrid(np.array([3, 5, 7]), np.array([1, 1, 3]))
-        assert G_mrst == G_pyrst
+        G_prst = cartGrid(np.array([3, 5, 7]), np.array([1, 1, 3]))
+        assert G_mrst == G_prst
 
     def test_index_kind(self):
         G = cartGrid([3, 5, 7])
@@ -208,36 +208,36 @@ class TestComputeGeometry:
 
     def test_compare_MRST_triangleGrid2D(self):
         G_mrst = loadMRSTGrid("tests/test_gridprocessing/computeGeometry_triangleGrid2D_expected.mat")
-        G_pyrst = loadMRSTGrid("tests/test_gridprocessing/computeGeometry_triangleGrid2D.mat")
-        computeGeometry(G_pyrst)
-        assert G_mrst == G_pyrst
+        G_prst = loadMRSTGrid("tests/test_gridprocessing/computeGeometry_triangleGrid2D.mat")
+        computeGeometry(G_prst)
+        assert G_mrst == G_prst
 
     def test_compare_MRST_triangleGrid3D(self):
         G_mrst = loadMRSTGrid("tests/test_gridprocessing/computeGeometry_triangleGrid3D_expected.mat")
-        G_pyrst = loadMRSTGrid("tests/test_gridprocessing/computeGeometry_triangleGrid3D.mat")
-        computeGeometry(G_pyrst)
-        assert G_mrst == G_pyrst
+        G_prst = loadMRSTGrid("tests/test_gridprocessing/computeGeometry_triangleGrid3D.mat")
+        computeGeometry(G_prst)
+        assert G_mrst == G_prst
 
     def test_findNeighbors2D(self):
-        G_pyrst = loadMRSTGrid("tests/test_gridprocessing/computeGeometry_findNeighbors2D.mat")
+        G_prst = loadMRSTGrid("tests/test_gridprocessing/computeGeometry_findNeighbors2D.mat")
         with pytest.raises(ValueError):
-            computeGeometry(G_pyrst)
+            computeGeometry(G_prst)
 
     def test_findNeighbors3D(self):
-        G_pyrst = loadMRSTGrid("tests/test_gridprocessing/computeGeometry_findNeighbors3D.mat")
-        computeGeometry(G_pyrst)
+        G_prst = loadMRSTGrid("tests/test_gridprocessing/computeGeometry_findNeighbors3D.mat")
+        computeGeometry(G_prst)
         G_mrst = loadMRSTGrid("tests/test_gridprocessing/computeGeometry_findNeighbors3D_expected.mat")
-        G_mrst._cmp(G_pyrst)
-        assert G_mrst == G_pyrst
+        G_mrst._cmp(G_prst)
+        assert G_mrst == G_prst
 
     def test_findNeighbors3D_force(self):
         G_mrst = loadMRSTGrid("tests/test_gridprocessing/computeGeometry_findNeighbors3D_expected.mat")
         computeGeometry(G_mrst, findNeighbors=True)
 
     def test_hingenodes(self):
-        G_pyrst = cartGrid(np.array([3, 3, 3]))
+        G_prst = cartGrid(np.array([3, 3, 3]))
         with pytest.raises(NotImplementedError):
-            computeGeometry(G_pyrst, hingenodes=True)
+            computeGeometry(G_prst, hingenodes=True)
 
     def test_zeroAreaFaces(self):
         G = cartGrid(np.array([3, 3, 3]))

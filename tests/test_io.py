@@ -8,7 +8,7 @@ import os
 import pytest
 import numpy as np
 
-from pyrst.io import loadMRSTGrid
+from prst.io import loadMRSTGrid
 
 class TestLoadMRSTGrid:
 
@@ -90,7 +90,7 @@ class TestLoadMRSTGrid:
                 [2, -1],
                 [3, -1],
             ]))
-        # G.faces.tag is not available in PyRST
+        # G.faces.tag is not available in PRST
         assert np.array_equal(G.faces.nodes, np.array([
                 0, 3, 1, 4, 2, 5, 3, 6, 4, 7, 5, 8, 1, 0, 2, 1, 4, 3, 5, 4, 7,
                 6, 8, 7

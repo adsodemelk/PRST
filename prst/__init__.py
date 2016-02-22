@@ -10,6 +10,6 @@ import numpy as np
 __all__ = ["gridprocessing", "io", "incomp"]
 
 import logging
-log = logging.getLogger('pyrst')
+log = logging.getLogger('prst')
 log.setLevel(logging.DEBUG)
 

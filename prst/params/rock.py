@@ -42,16 +42,16 @@ class Rock:
         E.g., `0.5` or `np.array([0.5, 0.5, 0.4])`.
 
     Example:
-    >>> from pyrst.gridprocessing import cartGrid
-    >>> from pyrst.utils.units import *
+    >>> from prst.gridprocessing import cartGrid
+    >>> from prst.utils.units import *
     >>> G = cartGrid([10, 20, 30], [1, 1, 1])
     >>> r1 = Rock(G, 100*milli*darcy, 0.3)
 
     See also:
-    NOTE: These do not yet exist in PyRST.
-        pyrst.params.rock.poreVolume
-        pyrst.params.rock.permTensor
-        pyrst.solvers.computeTrans
+    NOTE: These do not yet exist in PRST.
+        prst.params.rock.poreVolume
+        prst.params.rock.permTensor
+        prst.solvers.computeTrans
     """
     def __init__(self, G, perm=None, poro=None, ntg=None):
         nc = G.cells.num
@@ -80,7 +80,7 @@ class Rock:
                     "Porosity must be scalar or 1d array."
             poro = _expandToCell(poro, nc)
             if np.any(poro <= 0):
-                pyrst.log.warn("Zero or negative porosity found in cells.")
+                prst.log.warn("Zero or negative porosity found in cells.")
             self.poro = poro
 
         # Net-to-gross

@@ -6,7 +6,7 @@ import six
 
 import numpy as np
 
-import pyrst
+import prst
 
 class BoundaryCondition:
     """
@@ -49,7 +49,7 @@ class BoundaryCondition:
         2<->Vapor.
 
         This field is for the benefit of transport solvers such as
-        `blackoilUpwFE` (only in MRST, not PyRST) and will be ignored for
+        `blackoilUpwFE` (only in MRST, not PRST) and will be ignored for
         outflow faces.
 
         Default value: sat=None (assume single-phase flow).
@@ -79,7 +79,7 @@ class BoundaryCondition:
 
     def add(self, faces, types, values, sat=None):
         if len(faces) == 0:
-            pyrst.log.warn("Empty list of boundary faces.")
+            prst.log.warn("Empty list of boundary faces.")
             return
 
         # Expand type to all faces

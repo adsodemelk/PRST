@@ -6,9 +6,9 @@ from __future__ import unicode_literals
 import pytest
 import numpy as np
 
-from pyrst.utils import rlencode, rldecode
+from prst.utils import rlencode, rldecode
 
-from pyrst.utils.units import *
+from prst.utils.units import *
 
 
 class Test_rlencode:
