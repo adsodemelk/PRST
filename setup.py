@@ -11,7 +11,7 @@ class CleanCommand(Command):
     def finalize_options(self):
         pass
     def run(self):
-        os.system("rm -vrf ./build ./dist ./*.pyc ./*.egg-info MANIFEST coverage.xml")
+        os.system("rm -vrf ./build ./dist ./*.pyc ./*.egg-info MANIFEST coverage.xml Thumbs.db")
 
 # Read file in this dir to string
 def read(fname):

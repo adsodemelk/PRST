@@ -43,6 +43,21 @@ Currently there are no Python or Conda packages for this project. Download the
 whole repository and copy the "PRST/pyrst" folder into your project. Any
 scientific Python3 distribution such as Anaconda will satisfy the requirements.
 
+An experimental package is available on PyPI. It is recommended to install this
+within the full Anaconda2 distribution.
+
+    pip install prst
+
+The dependencies are not fully defined, and may be missing. Fix this using conda or pip.
+
+    pip install numpy_groupies
+
+To run the tests, additional dependencies are needed:
+
+    conda install numpy scipy six pytest pip
+    conda install -c https://conda.anaconda.org/bokeh pytest-cov
+    py.test
+
 
 ## Linux installation (using Miniconda/Anaconda)
 
@@ -87,7 +102,8 @@ To resume working after the initial steps have been completed:
     source venv3/bin/activate
     py.test
 
-SciPy needs to be compiled when installed using `pip`, and this can take up to 30 minutes.
+SciPy needs to be compiled when installed using `pip`, and this can take up to
+30 minutes. Use conda to avoid this.
 
 
 ## Windows installation

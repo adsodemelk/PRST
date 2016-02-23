@@ -1,3 +1,4 @@
+mayavi==4.4.0
 coverage==4.0.1
 numpy==1.10.1
 py==1.4.30
@@ -6,3 +7,4 @@ pytest-cov==2.2.0
 scipy==0.16.1
 six==1.10.0
 numpy_groupies==0.9.1
+
