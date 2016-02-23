@@ -7,7 +7,6 @@ import six
 from scipy.io import loadmat
 import numpy as np
 
-from tvtk.api import tvtk
 
 import prst
 import prst.gridprocessing
@@ -117,6 +116,13 @@ def saveVtkUnstructuredGrid(vtkGrid, file_name):
         from prst.plotting import createVtkUnstructuredGrid
         vtkGrid = createVtkUnstructuredGrid(G)
     """
+    try:
+        from tvtk.api import tvtk
+    except:
+        prst.log.error("Couldn't import tvtk")
+        return
+
+
     w = tvtk.XMLUnstructuredGridWriter(input=vtkGrid, file_name=file_name)
     return w.write()
 

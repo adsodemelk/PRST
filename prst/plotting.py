@@ -6,9 +6,6 @@ import six
 
 import numpy as np
 
-from tvtk.api import tvtk
-from mayavi import mlab
-from mayavi.sources.vtk_data_source import VTKDataSource
 
 #### Utility functions for conversion to vtkUnstructuredGrid.
 def _get_cell_faces(G, cell_idx):
@@ -58,6 +55,12 @@ def createVtkUnstructuredGrid(G):
 
     This is currently only used for plotting purposes.
     """
+    try:
+        from tvtk.api import tvtk
+        from mayavi import mlab
+        from mayavi.sources.vtk_data_source import VTKDataSource
+    except ImportError as e:
+        prst.log.error("Couldn't import", e)
     if G.gridDim == 2:
         raise NotImplementedError("Only 3d for now")
     # Initialize grid object with point coordinates
@@ -110,6 +113,13 @@ def plotGrid(G, cell_data=None):
     prst.plotting.createVtkUnstructuredGrid manually. See the source code of
     this function.
     """
+    try:
+        from tvtk.api import tvtk
+        from mayavi import mlab
+        from mayavi.sources.vtk_data_source import VTKDataSource
+    except ImportError as e:
+        prst.log.error("Couldn't import", e)
+
     ug = createVtkUnstructuredGrid(G)
     if cell_data:
         ug.cell_data.scalars = cell_data
