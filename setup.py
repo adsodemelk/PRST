@@ -20,14 +20,14 @@ def read(fname):
 setup(
     name = "PRST",
     packages = ["prst"],
-    version = "0.0.1",
+    version = "0.0.2",
     description = "Python Reservoir Simulation Toolbox",
     long_description = read("README.md"),
     license = "GPLv3",
     author = "Andreas Røssland",
     author_email = "andreas.roessland@gmail.com",
     url = "https://github.com/roessland/PRST",
-    download_url = "https://github.com/roessland/PRST/tarball/0.0.1",
+    download_url = "https://github.com/roessland/PRST/tarball/0.0.2",
     keywords = ["MRST", "reservoir", "simulation", "PDEs"],
     classifiers = [
         "Development Status :: 2 - Pre-Alpha",
