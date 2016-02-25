@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 import os
 
 import pytest
+from helpers import getpath
 import numpy as np
 
 from prst.io import loadMRSTGrid
@@ -13,27 +14,27 @@ from prst.io import loadMRSTGrid
 class TestLoadMRSTGrid:
 
     def test_single_grid_type(self):
-        G = loadMRSTGrid("tests/test_io/expected_tensorGrid2D_1G.mat")
+        G = loadMRSTGrid(getpath("test_io/expected_tensorGrid2D_1G.mat"))
         assert isinstance(G.gridType, list)
 
     def test_multiple_grid_types(self):
-        G = loadMRSTGrid("tests/test_io/multiple_gridtypes.mat")
+        G = loadMRSTGrid(getpath("test_io/multiple_gridtypes.mat"))
         assert isinstance(G.gridType, list)
 
     def test_malformed_gridType(self):
         with pytest.raises(ValueError):
-            G = loadMRSTGrid("tests/test_io/malformed_gridType.mat")
+            G = loadMRSTGrid(getpath("test_io/malformed_gridType.mat"))
 
     def test_no_indexMap(self):
-        G = loadMRSTGrid("tests/test_io/grid_without_indexMap_or_cartDims.mat", "V")
+        G = loadMRSTGrid(getpath("test_io/grid_without_indexMap_or_cartDims.mat"), "V")
         assert not hasattr(G, "indexMap")
 
     def test_no_cartDims(self):
-        G = loadMRSTGrid("tests/test_io/grid_without_indexMap_or_cartDims.mat", "V")
+        G = loadMRSTGrid(getpath("test_io/grid_without_indexMap_or_cartDims.mat"), "V")
         assert not hasattr(G, "cartDims")
 
     def test_tensorGrid2D(self):
-        G = loadMRSTGrid("tests/test_io/expected_tensorGrid2D_1G.mat")
+        G = loadMRSTGrid(getpath("test_io/expected_tensorGrid2D_1G.mat"))
 
         # Check existence of top-level attributes
         assert hasattr(G, "cells")
@@ -119,6 +120,6 @@ class TestLoadMRSTGrid:
         assert G.gridDim == 2
 
     def test_tensorGrid2D_V(self):
-        V = loadMRSTGrid("tests/test_io/expected_tensorGrid2D_1V.mat", "V")
+        V = loadMRSTGrid(getpath("test_io/expected_tensorGrid2D_1V.mat"), "V")
         assert V.cells.num == 4
 

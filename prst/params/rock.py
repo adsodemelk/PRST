@@ -1,5 +1,13 @@
+# Python 3 compatability
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+import six
+
 import numpy as np
 
+@six.python_2_unicode_compatible
 class Rock:
     """
     Rock structure for storing permeability and porosity values.
@@ -89,7 +97,12 @@ class Rock:
                     "NTG must be scalar or 1d array."
             self.ntg = _expandTocell(ntg, nc)
 
+    def __str__(self):
+        return str(self.__dict__)
 
+def makeRock():
+    """Use prst.params.rock.Rock"""
+    raise NotImplementedError("Use prst.params.rock.Rock")
 
 def _expandToCell(vals, num_cells):
     if np.isscalar(vals):

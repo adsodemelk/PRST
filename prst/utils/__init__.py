@@ -1,4 +1,4 @@
-__all__ = ["rldecode", "rlencode"]
+__all__ = ["rldecode", "rlencode", "units"]
 
 import numpy as np
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
-from setuptools import setup, Command
+from setuptools import setup, Command, find_packages
 
 class CleanCommand(Command):
     """Custom clean command to tidy up project root."""
@@ -19,7 +19,8 @@ def read(fname):
 
 setup(
     name = "PRST",
-    packages = ["prst"],
+    #packages = ["prst"],
+    packages = find_packages(),
     version = "0.0.2",
     description = "Python Reservoir Simulation Toolbox",
     long_description = read("README.md"),

@@ -91,7 +91,7 @@ def createVtkUnstructuredGrid(G):
 
     return ug
 
-def plotGrid(G, cell_data=None):
+def plotGrid(G, cell_data=None, bgcolor=(0.5,0.5,0.5), size=(400,300), show_edges=True):
     """Plot grid in MayaVi.
 
     Synopsis:
@@ -121,19 +121,27 @@ def plotGrid(G, cell_data=None):
         prst.log.error("Couldn't import", e)
 
     ug = createVtkUnstructuredGrid(G)
-    if cell_data:
+    if not cell_data is None:
         ug.cell_data.scalars = cell_data
+        ug.cell_data.scalars.name = "Cell values"
     vtkSrc = VTKDataSource(data=ug)
-    mlab.pipeline.add_dataset(vtkSrc, name="PRST cell data")
+
+    mlab.figure(bgcolor=bgcolor, size=size)
+    dataset = mlab.pipeline.add_dataset(vtkSrc, name="PRST cell data")
 
     # Yellow surface with translucent black wireframe.
     # VTK takes care of surface extraction, unlike in MRST where this is done
     # manually. The downside is performance, since the whole grid is converted.
     # On the other hand, this makes it possible to use various VTK filters to
     # transform the data.
-    mlab.pipeline.surface(vtkSrc, opacity=1., color=(1,1,0))
-    mlab.pipeline.surface(vtkSrc, opacity=0.2, representation="wireframe",
-                          color=(0,0,0), line_width=0.1)
+    if cell_data is None:
+        # MRST yellow
+        mlab.pipeline.surface(dataset, opacity=1., color=(1,1,0))
+    else:
+        # Display using default colormap
+        mlab.pipeline.surface(dataset, opacity=1.)
+    if show_edges:
+        mlab.pipeline.surface(mlab.pipeline.extract_edges(vtkSrc), color=(0,0,0), opacity=0.3)
     mlab.show()
 
 def plotCellData(G, cell_data):

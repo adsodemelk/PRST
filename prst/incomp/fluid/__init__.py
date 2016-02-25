@@ -10,8 +10,15 @@ Submodules:
     utils -
 
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+import six
+
 __all__ = ["incompressible", "utils"]
 
+@six.python_2_unicode_compatible
 class Fluid(object):
     """Fluid structure used in PRST.
 
@@ -60,11 +67,12 @@ class Fluid(object):
         instances (e.g., when using the second order adjoint method).
 
     """
-    pass
+    def __str__(self):
+        return str(self.__dict__)
 
 class SingleFluid(Fluid):
     def __init__(self, viscosity, density):
-        #super(SingleFluid, self).__init__(self)
+        super(SingleFluid, self).__init__()
         self.mu = viscosity
         self.rho = density
 

@@ -27,6 +27,16 @@ class TestRock:
         G = gridprocessing.cartGrid([10, 10, 10])
         rock = Rock(G)
 
+    def test_expandToCell(self):
+        # 1d arrays are used a lot in PRST, but in this case
+        # it is better to use a 2d array, since there are
+        # fewer special cases.
+        G = gridprocessing.cartGrid([5, 5, 5])
+        rock = Rock(G, perm=0.1)
+        assert rock.perm.ndim == 2
+        assert rock.perm.shape[0] == 5*5*5
+        assert rock.perm.shape[1] == 1
+
 class TestWellsAndBC:
 
     def test_simple_BoundaryCondition(self):
@@ -36,13 +46,30 @@ class TestWellsAndBC:
         assert bc.face[0] == 120
         assert len(bc.face) == 1
         assert bc.type[0] == "pressure"
-        assert bc.val[0] == 10000000
+        assert bc.value[0] == 10000000
 
         bc = BoundaryCondition(ix, "flux", -1)
         assert bc.face[0] == 120
         assert len(bc.face) == 1
         assert bc.type[0] == "flux"
 
-    def test_add_BoundaryCondition(self):
-        pass
+    def test_empty_condition(self):
+        bc = BoundaryCondition()
+        assert bc.face == None
+        assert bc.type == None
+        assert bc.value == None
+        assert bc.sat == None
+        bc.add(np.array([120]), "pressure", 99)
+        assert bc.value[0] == 99
+
+    def test_gravity_column(self):
+        G = gridprocessing.cartGrid([1, 1, 30], [1, 1, 30])
+        bc = BoundaryCondition().addPressureSide(G, "top", 1000000)
+        assert bc.face[0] == 121
+        assert bc.type[0] == "pressure"
+        assert bc.value[0] == 1000000
+        assert bc.sat is None
+
+
+
 
