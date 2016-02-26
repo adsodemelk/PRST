@@ -8,6 +8,7 @@ import numpy as np
 
 from prst.utils import rlencode, rldecode
 
+from prst.utils import mcolon
 from prst.utils.units import *
 
 
@@ -62,3 +63,17 @@ class Test_rldecode:
 class Test_units:
     def test_basic_units(self):
         assert centi == 1/100
+
+class Test_mcolon:
+    def test_basic(self):
+        lo = np.array([1, 2])
+        hi = np.array([3, 4])
+        ans = np.array([1, 2, 2, 3])
+        assert np.array_equal(mcolon(lo, hi), ans)
+
+    def test_stride(self):
+        lo = np.array([1, 2])
+        hi = np.array([6, 14])
+        s = np.array([2, 3])
+        ans = np.array([1,3,5, 2,5,8,11])
+        assert np.array_equal(mcolon(lo, hi, s), ans)

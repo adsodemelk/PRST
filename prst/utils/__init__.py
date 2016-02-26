@@ -1,4 +1,4 @@
-__all__ = ["rldecode", "rlencode", "units"]
+__all__ = ["rldecode", "rlencode", "units", "mcolon"]
 
 import numpy as np
 
@@ -100,3 +100,36 @@ def rldecode(A, n, axis=0):
     """
     return A.repeat(n, axis=axis)
 
+def mcolon(lo, hi, s=None):
+    """
+    Compute concatenated ranges.
+
+    Synopsis:
+        mcolon(lo, hi)
+        mcolon(lo, hi, stride)
+
+    Arguments:
+        lo (ndarray):
+            1d array of lower bounds
+        hi (ndarray):
+            1d array of upper bounds
+        s (Optional[ndarray]):
+            1d array of strides. Default = np.ones(lo.shape) (unit strides).
+
+    Returns:
+        np.r_[lo[0]:hi[0], ..., lo[-1]:hi[-1]]
+        np.r_[lo[0]:hi[0]:s[0], ..., lo[-1]:hi[-1]:s[-1]]
+        (The NumPy r_ index trick builds a concatenated array of ranges.)
+
+    Example:
+        >>> lo = np.array([0,0,0,0])
+        >>> hi = np.array([2,3,4,5])
+        >>> ind = mcolon(lo, hi)
+        >>> np.array_equal(ind, np.array([0,1,0,1,2,0,1,2,3,0,1,2,3,4]))
+        True
+    """
+    if s is None:
+        ranges = [range(l,h) for (l,h) in zip(lo,hi)]
+    else:
+        ranges = [range(l,h,st) for (l,h,st) in zip(lo,hi,s)]
+    return np.concatenate(ranges)

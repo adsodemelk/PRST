@@ -7,6 +7,7 @@ import six
 import numpy as np
 
 import prst
+from prst.utils import mcolon
 
 @six.python_2_unicode_compatible
 class BoundaryCondition(object):
@@ -286,27 +287,49 @@ def boundaryFaceIndices(G, side, I0, I1, I2):
     See also:
         prst.params.wells_and_bc.BoundaryCondition
     """
-    I0 = I0.ravel()
-    I1 = I1.ravel()
-    I2 = I2.ravel()
+    try:
+        I0 = I0.ravel()
+    except AttributeError:
+        pass
+    try:
+        I1 = I1.ravel()
+    except AttributeError:
+        pass
+    try:
+        I2 = I2.ravel()
+    except AttributeError:
+        pass
 
     ## Extract all faces of cells within the given subset.
-    cells, ft, isOutF = _boundaryCellsSubset(G, side, I0, I1, I2)
+    cells, faceTag, isOutF = _boundaryCellsSubset(G, side, I0, I1, I2)
+
+    fIX = G.cells.facePos;
+    hfIX = mcolon(fIX[cells], fIX[cells+1])
+    faces = G.cells.faces[hfIX, 0]
+    tags = G.cells.faces[hfIX, 1]
+    ix = faces[np.logical_and(isOutF[faces], tags == faceTag)]
+    return ix
 
 def _boundaryCellsSubset(G, direction, I0, I1, I2):
     # Determine which indices and faces to look for.
     d = direction.lower()
     if d in ["left", "left", "xmin"]:
+        # I == min(I)
         d0, d1, d2, faceTag = 1, 2, 0 ,0
     elif d in ["right", "east", "xmax"]:
+        # I == max(I)
         d0, d1, d2, faceTag = 1, 2, 0, 1
     elif d in ["back", "south", "ymin"]:
+        # J == min(J)
         d0, d1, d2, faceTag = 0, 2, 1, 2
     elif d in ["front", "north", "ymax"]:
+        # J == max(J)
         d0, d1, d2, faceTag = 0, 2, 1, 3
     elif d in ["top", "upper", "zmin"]:
+        # K == min(K)
         d0, d1, d2, faceTag = 0, 1, 2, 4
     elif d in ["bottom", "lower", "zmax"]:
+        # K == max(K)
         d0, d1, d2, faceTag = 0, 1, 2, 5
     else:
         raise ValueError("Boundary side " + d + " not supported.")
@@ -317,7 +340,7 @@ def _boundaryCellsSubset(G, direction, I0, I1, I2):
     isOutF = np.any(G.faces.neighbors == -1, axis=1)
     cells = np.unique(np.sum(G.faces.neighbors[isOutF,:], axis=1)+1)
 
-    # Determine logical indices of these cells Assume we will only be called
+    # Determine logical indices of these cells. Assume we will only be called
     # for logically Cartesian grids for which the fields `G.cartDims` and
     # `G.cells.indexMap` are present.
     dims = G.cartDims
@@ -332,23 +355,36 @@ def _boundaryCellsSubset(G, direction, I0, I1, I2):
                 "Two-dimensional boundary faces are incompatible with a " +\
                 "two-dimensional grid model. Specifically `I1` must contain "+\
                 "only a single number.")
-        if len(I2) > 0 && np.any(I2 > 1):
+        if len(I2) > 0 and np.any(I2 > 1):
             raise ValueError(
                 "A non-zero cell depth is incompatible with a "+\
                 "two-dimensional grid model. Specifically `I3` must be empty.")
 
-    1/0
-    TODO: http://stackoverflow.com/questions/28995146/matlab-ind2sub-equivalent-in-python
+    cI, cJ, cK = np.unravel_index(G.cells.indexMap[cells], dims, order="F")
+    if I0 is None:
+        I0 = np.arange(dims[d0])
+    if I1 is None:
+        I1 = np.arange(dims[d1])
 
-    1) Open Stackoverflow, MATLAB, Jupyter Notebook
-    2) Set a breakpoint on line 166 of boundaryFaceIndices.m
-    3) Run gravityColumn.m example.
-    4) Replicate ind2sub in PRST
-    5) Continue writing _boundaryCellsSubset
-    6) Continue writing boundaryFaceIndices
-    7) Kjøp cola!
+    # Determine whether or not a given cell is within the required subset
+    if np.any(I0 < 0) or np.any(dims[d0] <= I0):
+        raise ValueError("Cell range `I0` outside model.")
+    if np.any(I1 < 0) or np.any(dims[d1] <= I1):
+        raise ValueError("Cell range `I1` outside model.")
+    if not I2 is None and (np.any(I2 < 0) or np.any(dims[d2] <= I2)):
+        raise ValueError("Cell range `I2` outside model.")
 
+    Ii = np.zeros(G.cells.num, dtype=np.bool)
+    Ij = np.zeros(G.cells.num, dtype=np.bool)
+    Ii[I0] = True
+    Ij[I1] = True
+    inSubSet = np.logical_and(Ii[(cI,cJ,cK)[d0]], Ij[(cI,cJ,cK)[d1]])
 
+    if not I2 is None:
+        Ik = np.zeros(G.cells.num, dtype=np.bool)
+        Ik[I2] = True
+        inSubSet = np.logical_and(inSubSet, Ik[(cI,cJ,cK)[d2]])
 
-
-
+    # Extract required cells subset
+    cells = cells[inSubSet]
+    return cells, faceTag, isOutF
