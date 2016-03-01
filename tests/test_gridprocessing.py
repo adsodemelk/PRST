@@ -70,16 +70,42 @@ class TestGrid:
         str(G)
 
     def test_column_shapes(self):
+        """Use the same convention as MRST: Column arrays for all data."""
         G = cartGrid([3,4,5])
         computeGeometry(G)
         assert G.cells.facePos.shape[1] == 1
         assert G.faces.nodePos.shape[1] == 1
         assert G.faces.nodes.shape[1] == 1
-        #assert G.cells.indexMap.shape[1] == 1
-        #assert G.cells.volumes.shape[1] == 1
-        #assert G.cells.centroids.shape[1] == 3
-        #assert G.faces.tag.shape[1] == 1
-        #assert G.faces.areas.shape[1] == 1
+        assert G.cells.indexMap.shape[1] == 1
+        assert G.cells.volumes.shape[1] == 1
+        assert G.cells.centroids.shape[1] == 3
+        assert G.faces.tag.shape[1] == 1
+        assert G.faces.areas.shape[1] == 1
+
+    def test_computeFaceNodes(self):
+        G = cartGrid([2,2,1])
+        # Uniform number of face nodes
+        G.faces.nodePos = np.array([[0,4,8,12,16]]).T
+        expected = [
+             np.array([0,1,2,3]),
+             np.array([4,5,6,7]),
+             np.array([8,9,10,11]),
+             np.array([12,13,14,15])]
+        assert all([np.array_equal(i,j) for (i,j) in zip(G.computeFaceNodes(), expected)])
+        # Different number of face nodes
+        G.faces.nodePos = np.array([[0,4,8,10,16]]).T
+        expected = [
+             np.array([0,1,2,3]),
+             np.array([4,5,6,7]),
+             np.array([8,9]),
+             np.array([10,11,12,13,14,15])]
+        assert all([np.array_equal(i,j) for (i,j) in zip(G.computeFaceNodes(), expected)])
+        expected = [
+             [0,1,2,3],
+             [4,5,6,7],
+             [8,9],
+             [10,11,12,13,14,15]]
+        assert all([i==j for (i,j) in zip(G.computeFaceNodes(aslist=True), expected)])
 
 class TestTensorGrid2D:
 
@@ -284,6 +310,3 @@ class TestComputeGeometry:
         G = cartGrid(np.array([3, 3, 3]))
         del G.gridType
         computeGeometry(G)
-
-
-

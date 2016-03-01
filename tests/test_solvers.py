@@ -39,3 +39,17 @@ class TestInitResSol:
         assert np.array_equal(resSol.flux, np.zeros((G.faces.num,1)))
         assert np.array_equal(resSol.s, np.zeros((G.cells.num,1)))
 
+    def test_wrongly_shaped_s0(self):
+        G = cartGrid([2,2,1])
+        with pytest.raises(ValueError):
+            resSol = initResSol(G, p0=0.5, s0=np.array([[1,2,3,4,5]]).T)
+
+    def test_wrongly_shaped_p0(self):
+        G = cartGrid([2,2,1])
+        with pytest.raises(AssertionError):
+            resSol = initResSol(G, p0=np.array([[1,2,3,4]]))
+        with pytest.raises(AssertionError):
+            resSol = initResSol(G, p0=np.array([[1,2,3,4,5]]).T)
+
+
+

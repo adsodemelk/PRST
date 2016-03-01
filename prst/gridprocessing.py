@@ -305,15 +305,17 @@ class Grid(object):
         s += "\n>"
         return s
 
-    def computeFaceNodes(G):
+    def computeFaceNodes(G, aslist=False):
         """Compute array of face nodes.
 
         Synopsis:
             faceNodes = G.computeFaceNodes()
 
-        Arguments: None (Grid class method)
+        Arguments:
+            aslist (bool):
+                If True, return list of lists, instead of list of ndarrays.
 
-        Returns: Python list of ndarrays. Each ndarray contains node indices
+        Returns: *PYTHON LIST* of ndarrays. Each ndarray contains node indices
         for a face.
 
         Using the G.faces.nodePos attribute, calculate an explicit list of
@@ -337,7 +339,10 @@ class Grid(object):
         This is useful since this is the format used by the MayaVi/VTK
         visualization libraries.
         """
-        return [np.arange(a, b) for a,b in zip(G.faces.nodePos[:-1,0], G.faces.nodePos[1:,0])]
+        if aslist:
+            return [range(a, b) for a,b in zip(G.faces.nodePos[:-1,0], G.faces.nodePos[1:,0])]
+        else:
+            return [np.arange(a, b) for a,b in zip(G.faces.nodePos[:-1,0], G.faces.nodePos[1:,0])]
 
 ##############################################################################
 # GRID CONSTRUCTORS

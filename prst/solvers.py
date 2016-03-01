@@ -186,6 +186,8 @@ def initResSol(G, p0, s0=0.0):
 
     if p0.size == 1:
         p0 = np.tile(p0, (nc,1))
+    else:
+        assert p0.shape[0] == nc
 
     resSol = Struct(pressure=p0,
                     flux=np.zeros((nf,1)),
