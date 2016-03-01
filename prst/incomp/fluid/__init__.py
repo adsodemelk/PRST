@@ -13,10 +13,10 @@ Submodules:
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from __future__ import unicode_literals
 import six
 
-__all__ = ["incompressible", "utils"]
+__all__ = ["incompressible", "utils", "Fluid", "SingleFluid"]
+from . import incompressible, utils
 
 @six.python_2_unicode_compatible
 class Fluid(object):

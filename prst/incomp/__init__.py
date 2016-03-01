@@ -15,6 +15,7 @@ Submodules:
 
 __all__ = ["fluid", "transport", "incompTPFA", "capPressureRHS",
            "computePressureRHS"]
+from . import fluid, transport
 
 # def computeFacePressure # not used in incompTPFA
 # not implemented yet
@@ -26,13 +27,15 @@ def capPressureRHS():
 def computePressureRHS():
     raise NotImplementedError
 
-def incompTPFA(state, G, T, fluid, ...):
+def incompTPFA(state, G, T, fluid, wells=None, bc=None, src=None,
+               LinSolve=None, MatrixOutput=False, verbose=None,
+               condition_number=False, gravity=None):
     """
     Solve incompressible flow problem (fluxes/pressure) using TPFA method.
 
     Synopsis:
         state = incompTPFA(state, G, T, fluid)
-        state = incompTPFA(state, G, T, fluid, TODOMOREARGS)
+        state = incompTPFA(state, G, T, fluid, **kwargs)
 
     Description:
         This function assembles and solves a (block) system of linear equations

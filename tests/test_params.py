@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from __future__ import unicode_literals
 
 import pytest
 import numpy as np
@@ -139,19 +138,41 @@ class Test_permTensor:
 
 class TestWellsAndBC:
 
+    def test_BC_attribute_shapes(self):
+        # Assert column arrays
+        ix = np.array([[120, 121]]).T
+        bc = BoundaryCondition(ix, "pressure", 500)
+        assert bc.face.shape[0] == 2
+        assert bc.face.shape[1] == 1
+        print(bc.type)
+        assert bc.type.shape[0] == 2
+        assert bc.type.shape[1] == 1
+        assert bc.value.shape[0] == 2
+        assert bc.value.shape[1] == 1
+
+        G = cartGrid([2,2,2])
+        bc = BoundaryCondition()
+        bc.addPressureSide(G, "top", 100)
+        assert bc.face.shape[0] == 4
+        assert bc.face.shape[1] == 1
+        assert bc.type.shape[0] == 4
+        assert bc.type.shape[1] == 1
+        assert bc.value.shape[0] == 4
+        assert bc.value.shape[1] == 1
+
     def test_simple_BoundaryCondition(self):
         # These input parameters are used in the MRST example gravityColumn.m.
-        ix = np.array([120])
+        ix = np.array([[120]])
         bc = BoundaryCondition(ix, "pressure", 10000000)
-        assert bc.face[0] == 120
+        assert bc.face[0,0] == 120
         assert len(bc.face) == 1
-        assert bc.type[0] == "pressure"
-        assert bc.value[0] == 10000000
+        assert bc.type[0,0] == "pressure"
+        assert bc.value[0,0] == 10000000
 
         bc = BoundaryCondition(ix, "flux", -1)
-        assert bc.face[0] == 120
+        assert bc.face[0,0] == 120
         assert len(bc.face) == 1
-        assert bc.type[0] == "flux"
+        assert bc.type[0,0] == "flux"
 
     def test_empty_condition(self):
         bc = BoundaryCondition()
@@ -159,15 +180,15 @@ class TestWellsAndBC:
         assert bc.type == None
         assert bc.value == None
         assert bc.sat == None
-        bc.add(np.array([120]), "pressure", 99)
-        assert bc.value[0] == 99
+        bc.add(np.array([[120]]), "pressure", 99)
+        assert bc.value[0,0] == 99
 
     def test_gravity_column(self):
         G = gridprocessing.cartGrid([1, 1, 30], [1, 1, 30])
         bc = BoundaryCondition().addPressureSide(G, "top", 1000000)
-        assert bc.face[0] == 120
-        assert bc.type[0] == "pressure"
-        assert bc.value[0] == 1000000
+        assert bc.face[0,0] == 120
+        assert bc.type[0,0] == "pressure"
+        assert bc.value[0,0] == 1000000
         assert bc.sat is None
 
 

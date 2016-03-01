@@ -1,8 +1,9 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from __future__ import unicode_literals
 import six
+
+__all__ = ["BoundaryCondition"]
 
 import numpy as np
 
@@ -21,9 +22,9 @@ class BoundaryCondition(object):
     Synopsis:
 
         bc = BoundaryCondition()
-        bc = BoundaryCondition(one_face, "pressure", np.array([10000000]))
-        bc = BoundaryCondition(three_faces, "flux", np.array([1,2,3]))
-        bc.add(np.array([120, 121]), "flux", 5)
+        bc = BoundaryCondition(one_face, "pressure", np.array([[10000000]]))
+        bc = BoundaryCondition(three_faces, "flux", np.array([[1,2,3]]).T)
+        bc.add(np.array([[120, 121]]).T, "flux", 5)
         bc.add(faces, "pressure", 1000000)
 
     Arguments:
@@ -87,18 +88,24 @@ class BoundaryCondition(object):
             self.add(faces, types, values, sat)
 
     def add(self, faces, types, values, sat=None):
+        faces = np.atleast_2d(faces); assert faces.shape[1] == 1
+        types = np.atleast_2d(types); assert types.shape[1] == 1
+        values = np.atleast_2d(values); assert values.shape[1] == 1
+        if sat:
+            sat = np.atleast_2d(sat);
+
         if len(faces) == 0:
             prst.log.warn("Empty list of boundary faces.")
             return self
 
         # Expand type to all faces
         if isinstance(types, six.string_types):
-            types = np.tile(types, len(faces))
+            types = np.tile(types, (len(faces), 1))
         else:
-            assert isinstance(types, np.array), \
+            assert isinstance(types, np.ndarray), \
                     "Types must be string or ndarray of strings"
-            assert types.ndim == 1, \
-                    "Types must be string or 1d array of strings."
+            assert types.ndim == 2, \
+                    "Types must be string or 2d column array of strings."
 
 
         # Check that all types are either pressure or flux
@@ -106,18 +113,18 @@ class BoundaryCondition(object):
         assert np.all(np.logical_or(types == "pressure", types == "flux"))
 
         # Expand single-element saturations to cover all faces.
-        if (not sat is None) and sat.ndim == 1:
-            sat = np.tile(sat, (len(faces),1))
+        if (not sat is None) and sat.shape[0] == 1:
+            sat = np.tile(sat, (len(faces), 1))
 
         # Validate saturation input has same number of columns as existing
         # saturation array.
         assert (sat is None) or (self.sat.shape[1] == sat.shape[1])
 
         # Expand single-element values to cover all faces
-        if np.isscalar(values):
-            values = np.tile(values, (len(faces),))
-
-        # Verify that values and sat are same lenght as faces
+        if values.size == 1:
+            values = np.tile(values, (len(faces), 1))
+        if types.shape[0] == 1:
+            types = np.tile(types, (len(faces), 1))
 
         # Verify that boundary condition is not already set
         assert np.intersect1d(self.face, faces).size == 0, \
@@ -125,13 +132,13 @@ class BoundaryCondition(object):
 
 
 
-        self.face = _create_or_append(self.face, faces)
-        self.type = _create_or_append(self.type, types)
-        self.value = _create_or_append(self.value, values)
+        self.face = faces
+        self.type = types
+        self.value = values
         if sat is None:
             self.sat = None
         else:
-            self.sat = _create_or_vstack(self.sat, sat)
+            self.sat = sat
         return self
 
     def addPressureSide(self, G, side, p, I0=None, I1=None, sat=None, range=None):
@@ -163,6 +170,7 @@ class BoundaryCondition(object):
             p (scalar or ndarray):
                 Pressure value in units of Pascal, to be applied to the face.
                 Either a scalar or a 1d array of length len(I0)*len(I1).
+                If ndarray, it must be a column array.
 
             I0, I1 (Optional[list or ndarray]):
                 Cell index ranges for local (in-plane) axes one and two,
@@ -205,18 +213,20 @@ class BoundaryCondition(object):
         """
         if not hasattr(G, "cartDims"):
             return NotImplementedError("Not implemented for this grid type.")
+        p = np.atleast_2d(p); assert p.shape[1] == 1
 
         assert not ((I0 is None) ^ (I1 is None)) # Both or none must be defined
 
         ix = boundaryFaceIndices(G, side, I0, I1, range)
-        assert np.isscalar(p) or p.size == ix.size
+        assert ix.shape[1] == 1
+        assert p.shape[0] == 1 or p.shape[0] == ix.size
         assert sat is None or (sat.shape[0] == 1 or sat.shape[0] == ix.size)
 
         if (not sat is None) and sat.shape[0] == 1:
-            sat = np.tile(sat, (ix.size,1))
+            sat = np.tile(sat, (ix.size, 1))
 
-        if np.isscalar(p):
-            p = np.tile(p, ix.size)
+        if p.shape[0] == 1:
+            p = np.tile(p, (ix.size, 1))
 
         self.add(ix, "pressure", p, sat=sat)
 
@@ -224,18 +234,6 @@ class BoundaryCondition(object):
 
     def __str__(self):
         return str(self.__dict__)
-
-def _create_or_append(existing, new):
-    if existing is None:
-        return new
-    else:
-        return np.append(existing, new)
-
-def _create_or_vstack(existing, new):
-    if existing is None:
-        return new
-    else:
-        return np.vstack((existing, new))
 
 def boundaryFaceIndices(G, side, I0, I1, I2):
     """
@@ -277,7 +275,7 @@ def boundaryFaceIndices(G, side, I0, I1, I2):
             only.
 
     Returns:
-        ix - Required face indices.
+        ix - Required face indices as a column array.
 
     Note:
         This function is mainly intended for internal use in this file. Its
@@ -308,7 +306,8 @@ def boundaryFaceIndices(G, side, I0, I1, I2):
     faces = G.cells.faces[hfIX, 0]
     tags = G.cells.faces[hfIX, 1]
     ix = faces[np.logical_and(isOutF[faces], tags == faceTag)]
-    return ix
+    # return as column array
+    return ix[:,np.newaxis]
 
 def _boundaryCellsSubset(G, direction, I0, I1, I2):
     # Determine which indices and faces to look for.
@@ -387,4 +386,9 @@ def _boundaryCellsSubset(G, direction, I0, I1, I2):
 
     # Extract required cells subset
     cells = cells[inSubSet]
+
+    # Transpose into column array
+    cells = np.atleast_2d(cells)
+    if cells.shape[1] > 1:
+        cells = cells.T
     return cells, faceTag, isOutF
