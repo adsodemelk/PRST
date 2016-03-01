@@ -42,7 +42,7 @@ def loadMRSTGrid(matfile, variablename="G"):
 
     """
     # Convert data to these types
-    INT_DTYPE = np.int32
+    INT_DTYPE = np.int64
     FLOAT_DTYPE = np.float64
 
     data = loadmat(matfile, squeeze_me=True, struct_as_record=False)
@@ -51,15 +51,18 @@ def loadMRSTGrid(matfile, variablename="G"):
     G = prst.gridprocessing.Grid()
     G.cells.num = M.cells.num
     G.cells.facePos = M.cells.facePos.astype(INT_DTYPE) - 1
+    G.cells.facePos.shape = (G.cells.facePos.size,1)
     G.cells.faces = M.cells.faces.astype(INT_DTYPE) - 1
 
     # computeGeometry attributes may not exist
     try:
         G.cells.indexMap = M.cells.indexMap.astype(INT_DTYPE) - 1
+        G.cells.indexMap = G.cells.indexMap[:,np.newaxis] # make into column
     except AttributeError:
         prst.log.info("Loaded grid has no cells.indexMap")
     try:
         G.cells.volumes = M.cells.volumes.astype(FLOAT_DTYPE)
+        G.cells.volumes = G.cells.volumes[:,np.newaxis]
     except AttributeError:
         prst.log.info("Loaded grid has no cells.volumes")
     try:
@@ -68,6 +71,7 @@ def loadMRSTGrid(matfile, variablename="G"):
         prst.log.info("Loaded grid has no cells.centroids")
     try:
         G.faces.areas = M.faces.areas.astype(FLOAT_DTYPE)
+        G.faces.areas = G.faces.areas[:,np.newaxis]
     except AttributeError:
         prst.log.info("Loaded grid has no faces.areas")
     try:
@@ -81,11 +85,13 @@ def loadMRSTGrid(matfile, variablename="G"):
 
     G.faces.num = M.faces.num
     G.faces.nodePos = M.faces.nodePos.astype(INT_DTYPE) - 1
+    G.faces.nodePos = G.faces.nodePos[:,np.newaxis] # 2d column
     try:
         G.faces.neighbors = M.faces.neighbors.astype(INT_DTYPE) - 1
     except AttributeError:
         prst.log.warn("Loaded grid has no faces.neighbors")
     G.faces.nodes = M.faces.nodes.astype(INT_DTYPE) - 1
+    G.faces.nodes = G.faces.nodes[:,np.newaxis] # 2d column
 
     G.nodes.num = M.nodes.num
     G.nodes.coords = M.nodes.coords.astype(FLOAT_DTYPE)

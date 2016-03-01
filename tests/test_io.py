@@ -10,12 +10,22 @@ from helpers import getpath
 import numpy as np
 
 from prst.io import loadMRSTGrid
+from prst.gridprocessing import computeGeometry
 
 class TestLoadMRSTGrid:
 
     def test_single_grid_type(self):
         G = loadMRSTGrid(getpath("test_io/expected_tensorGrid2D_1G.mat"))
         assert isinstance(G.gridType, list)
+
+    def test_array_shapes(self):
+        G = loadMRSTGrid(getpath("test_io/expected_tensorGrid2D_1G.mat"))
+        assert G.cells.facePos.shape[1] == 1
+        assert G.cells.indexMap.shape[1] == 1
+
+    def test_computeGeometry_shapes(self):
+        G = loadMRSTGrid(getpath("test_gridprocessing/computeGeometry_findNeighbors3D_expected.mat"))
+        assert G.cells.centroids.ndim == 2
 
     def test_multiple_grid_types(self):
         G = loadMRSTGrid(getpath("test_io/multiple_gridtypes.mat"))
@@ -47,9 +57,9 @@ class TestLoadMRSTGrid:
         assert hasattr(G.cells, "num")
         assert G.cells.num == 4
         assert np.array_equal(G.cells.facePos, np.array(
-            [ 0, 4, 8, 12, 16]))
+            [[0], [4], [8], [12], [16]]))
         assert np.array_equal(G.cells.indexMap, np.array(
-            [0, 1, 2, 3]))
+            [[0], [1], [2], [3]]))
         assert np.array_equal(G.cells.faces, np.array([
                 [0, 0],
                 [6, 2],
@@ -73,7 +83,7 @@ class TestLoadMRSTGrid:
         assert G.faces.num == 12
         assert np.array_equal(G.faces.nodePos, np.array([
                  0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24
-            ]))
+             ])[:,np.newaxis])
         # This array is saved as uint8, and if not carefully loaded, -1 will
         # become 255.
         assert G.faces.neighbors[0,0] == -1
@@ -95,7 +105,7 @@ class TestLoadMRSTGrid:
         assert np.array_equal(G.faces.nodes, np.array([
                 0, 3, 1, 4, 2, 5, 3, 6, 4, 7, 5, 8, 1, 0, 2, 1, 4, 3, 5, 4, 7,
                 6, 8, 7
-            ]))
+            ])[:,np.newaxis])
 
         # Nodes
         assert G.nodes.num == 9

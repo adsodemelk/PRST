@@ -11,7 +11,7 @@ import numpy as np
 from prst.gridprocessing import *
 from prst.params.rock import Rock
 from prst.utils.units import *
-from prst.solvers import computeTrans
+from prst.solvers import computeTrans, initResSol
 
 class TestComputeTrans:
 
@@ -28,4 +28,14 @@ class TestComputeTrans:
         assert np.array_equal(T.shape, mrst_T.shape)
         assert np.allclose(T, mrst_T)
 
+class TestInitResSol:
+
+    def test_common_usage(self):
+        G = cartGrid([2,2,2])
+        resSol = initResSol(G, p0=0.5)
+        assert hasattr(resSol, "pressure")
+        assert hasattr(resSol, "flux")
+        assert np.array_equal(resSol.pressure, 0.5*np.ones((G.cells.num,1)))
+        assert np.array_equal(resSol.flux, np.zeros((G.faces.num,1)))
+        assert np.array_equal(resSol.s, np.zeros((G.cells.num,1)))
 

@@ -61,14 +61,14 @@ class Grid(object):
                 Number of cells in the global grid.
 
             - G.cells.facePos (np.ndarray)
-                Array with shape (G.cells.num,) into the G.cells.faces array.
+                Array with shape (G.cells.num, 1) into the G.cells.faces array.
                 Specifically, the face information of cell `i` is found in the
                 subarray
 
                     G.cells.faces[G.cells.facePos[i] : G.cells.facePos[i+1]]
 
                 The number of faces for each cell may be computed using using
-                the statement `np.diff(G.cells.facePos)`.
+                the statement `np.diff(G.cells.facePos, axis=0)`.
 
             - G.cells.faces (np.ndarray)
                 Array with shape (G.cells.num, 2) of global faces connected to
@@ -81,7 +81,7 @@ class Grid(object):
                 using the statement
 
                     prst.util.rldecode(np.arange(G.cells.num),
-                        np.diff(G.cells.facePos), axis=1)
+                        np.diff(G.cells.facePos, axis=0))
                     TODO: Add test for this.
 
                 A grid constructor may, optionally, append a third column to
@@ -94,9 +94,10 @@ class Grid(object):
                 `fluxside`). NOTE: These are not yet implemented in PRST.
 
             - G.cells.indexMap (np.ndarray)
-                Maps internal to external grid cells (i.e., active cell numbers
-                to global cell numbers). In the case of Cartesian grids,
-                `G.cells.indexMap` is equal to `np.arange(G.cells.num)`.
+                Column array. Maps internal to external grid cells (i.e.,
+                active cell numbers to global cell numbers). In the case of
+                Cartesian grids, `G.cells.indexMap` is equal to
+                `np.arange(G.cells.num)` transposed.
 
                 For grids with a logically Cartesian topology of dimension
                 `dims` (a curvilinear grid, a corner-point grid, etc.), a map
@@ -116,7 +117,7 @@ class Grid(object):
                 In the latter case, ijk(i,:) is global (I,J,K) index of cell i.
 
             - G.cells.volumes (np.ndarray)
-                Array with shape (G.cells.num,) of cell volumes.
+                Array with shape (G.cells.num,1) of cell volumes.
 
             - G.cells.centroids (np.ndarray)
                 Array with shape (G.cells.num, d) of cell centroids in R^d.
@@ -128,25 +129,26 @@ class Grid(object):
                 Number of global faces in the grid.
 
             - G.faces.nodePos (np.ndarray)
-                Array with shape (G.faces.num,) into the `G.faces.faceNodes`
+                Array with shape (G.faces.num,1) into the `G.faces.faceNodes`
                 array. Specifically, the node information of face `i` is found
                 in the subarray
 
-                    G.faces.nodes[G.faces.nodePos[i] : G.faces.nodePos[i+1]]
+                    G.faces.nodes[G.faces.nodePos[i,0] : G.faces.nodePos[i+1,0]]
 
                 The number of nodes for each face may be computed using the
-                statement `np.diff(G.faces.nodePos)`.
+                statement `np.diff(G.faces.nodePos, axis=0)`.
 
             - G.faces.nodes (np.ndarray)
-                Array with shape (G.faces.nodePos[-1], 2) of vertices in the
+                Array with shape (G.faces.nodePos[-1,0], 2) of vertices in the
                 grid. Specifically, if `G.faces.nodes[i,0] == j` then local
                 vertex `i` is part of global face number `j` and corresponds to
                 global vertex `G.faces.nodes[i,1]`. To conserve memory, only
                 the last column is stored. The first column can be constructed
                 using the statement
 
+                    # TODO: This is untested code
                     prst.utils.rldecode(
-                        np.arange(G.faces.num, np.diff(G.faces.nodePos), axis=1)
+                        np.arange(G.faces.num, np.diff(G.faces.nodePos, axis=0))
 
             - G.faces.neighbors (np.ndarray)
                 Array with shape (G.faces.num, 2) of neighboring information.
@@ -157,12 +159,12 @@ class Grid(object):
                 shared only by a single cell (the nonnegative one).
 
             - G.faces.tag (np.ndarray)
-                Array with shape (G.faces.num,) of face tags. A tag is a
+                Array with shape (G.faces.num, 1) of face tags. A tag is a
                 scalar. The exact semantics of this field is currently
                 undecided and subject to change in future releases of PRST.
 
             - G.faces.areas (np.ndarray)
-                Array with shape (G.faces.num,) of face areas.
+                Array with shape (G.faces.num, 1) of face areas.
 
             - G.faces.normals (np.ndarray)
                 Array with shape (G.faces.num, d) of *AREA WEIGHTED*, directed
@@ -292,41 +294,9 @@ class Grid(object):
         return not G == V
 
     def _cmp(G, V):
-        """Shows attributes comparions betwen two grids. For debugging.
+        """Shows attributes comparions betwen two grids. For debugging."""
+        prst.utils.recursive_diff(G, V)
 
-        Does NOT (yet) compare attributes computed by computeGeometry.
-
-        Example:
-
-            >>> G = cartGrid(np.array([4, 5]))
-            >>> V = cartGrid(np.array([4, 6]))
-            >>> G._cmp(V)
-            Grid attributes comparison:
-                cells.num are different
-                cells.facePos are different
-                cells.indexMap are different
-            ...
-        """
-        print("Grid attributes comparison:")
-        s = {True: "are equal", False: "are different"}
-
-        print("    cells.num", s[G.cells.num == V.cells.num])
-        print("    cells.facePos", s[np.array_equal(G.cells.facePos, V.cells.facePos)])
-        print("    cells.indexMap", s[np.array_equal(G.cells.indexMap, V.cells.indexMap)])
-        print("    cells.faces", s[np.array_equal(G.cells.faces, V.cells.faces)])
-
-        print("    faces.num", s[G.faces.num != V.cells.num])
-        print("    faces.nodePos", s[np.array_equal(G.faces.nodePos, V.faces.nodePos)])
-        print("    faces.neighbors", s[np.array_equal(G.faces.neighbors, V.faces.neighbors)])
-        print("    faces.nodes", s[np.array_equal(G.faces.nodes, V.faces.nodes)])
-
-        print("    nodes.num", s[G.nodes.num == V.nodes.num])
-        print("    nodes.coords",
-                s[np.array_equal(G.nodes.coords.shape, V.nodes.coords.shape) and
-                  np.isclose(G.nodes.coords, V.nodes.coords).all()])
-        print("    gridType", s[G.gridType == V.gridType])
-        print("    gridDim", s[G.gridDim == V.gridDim])
-        print(" computeGeometry attributes:")
 
     def __str__(G):
         s = "<PRST grid"
@@ -352,7 +322,7 @@ class Grid(object):
 
         has the G.faces.nodePos array
 
-            [0 4 8 12 16 20 24 28 32 36 40 44 48 52 56 60 64 68 72 76 80].
+            [[0 4 8 12 16 20 24 28 32 36 40 44 48 52 56 60 64 68 72 76 80]].T
 
         `G.computeFaceNodes()` will then return the Python list (!) of ndarrays
 
@@ -367,7 +337,7 @@ class Grid(object):
         This is useful since this is the format used by the MayaVi/VTK
         visualization libraries.
         """
-        return [np.arange(a, b) for a,b in zip(G.faces.nodePos[:-1], G.faces.nodePos[1:])]
+        return [np.arange(a, b) for a,b in zip(G.faces.nodePos[:-1,0], G.faces.nodePos[1:,0])]
 
 ##############################################################################
 # GRID CONSTRUCTORS
@@ -525,14 +495,14 @@ def _tensorGrid2D(x, y, depthz=None):
 
     G = Grid()
     G.cells.num = numCells
-    G.cells.facePos = np.arange(0, (numCells+1)*4-1, 4, dtype=np.int32)
-    G.cells.indexMap = np.arange(0, numCells, dtype=np.int32)
+    G.cells.facePos = np.arange(0, (numCells+1)*4-1, 4, dtype=np.int32)[:,np.newaxis]
+    G.cells.indexMap = np.arange(0, numCells, dtype=np.int32)[:,np.newaxis]
     G.cells.faces = cellFaces.astype(np.int32)
     G.faces.num = numFaces
-    G.faces.nodePos = np.arange(0, (numFaces+1)*2-1, 2)
+    G.faces.nodePos = np.arange(0, (numFaces+1)*2-1, 2)[:,np.newaxis]
     G.faces.neighbors = neighbors.astype(np.int32)
     G.faces.tag = np.zeros((numFaces, 1))
-    G.faces.nodes = faceNodes.astype(np.int32)
+    G.faces.nodes = faceNodes.astype(np.int32)[:,np.newaxis]
     G.nodes.num = numNodes
     G.nodes.coords = coords
     G.cartDims = cellDim.astype(np.int32)
@@ -664,13 +634,14 @@ def _tensorGrid3D(x, y, z, depthz=None):
     G = Grid()
     G.cells.num = numCells
     G.cells.facePos = np.arange(0, (numCells+1)*6-1, 6).astype(np.int32)
-    G.cells.indexMap = np.arange(0, numCells).astype(np.int32)
+    G.cells.facePos = G.cells.facePos[:,np.newaxis] # As a column array
+    G.cells.indexMap = np.arange(0, numCells).astype(np.int32)[:,np.newaxis]
     G.cells.faces = cellFaces.astype(np.int32)
     G.faces.num = numFaces
-    G.faces.nodePos = np.arange(0, (numFaces+1)*4-1, 4).astype(np.int32)
+    G.faces.nodePos = np.arange(0, (numFaces+1)*4-1, 4).astype(np.int32)[:,np.newaxis]
     G.faces.neighbors = neighbors.astype(np.int32)
     G.faces.tag = np.zeros((numFaces,1))
-    G.faces.nodes = faceNodes.astype(np.int32)
+    G.faces.nodes = faceNodes.astype(np.int32)[:,np.newaxis]
     G.nodes.num = numNodes
     G.nodes.coords = coords
     G.cartDims = cellDim.astype(np.int32)
@@ -827,10 +798,10 @@ def computeGeometry(G, findNeighbors=False, hingenodes=None):
     if G.gridDim == 3:
         ## 3D grid
         assert G.nodes.coords.shape[1] == 3
-        faceNumbers = prst.utils.rldecode(np.arange(G.faces.num), np.diff(G.faces.nodePos))
+        faceNumbers = prst.utils.rldecode(np.arange(G.faces.num), np.diff(G.faces.nodePos,axis=0))
         nodePos = G.faces.nodePos;
         nextNode = np.arange(1, G.faces.nodes.size+1)
-        nextNode[nodePos[1:]-1] = nodePos[:-1]
+        nextNode[nodePos[1:,0]-1] = nodePos[:-1,0]
 
         # Divide each face into sub-triangles all having one node as pCenter =
         # sum(nodes) / numNodes. Compute area-weighted normals, and add to
@@ -842,22 +813,22 @@ def computeGeometry(G, findNeighbors=False, hingenodes=None):
         # Divide each row in the matrix product by the numbers in the final
         # array elementwise
         pCenters = (localEdge2Face.transpose().dot(
-                G.nodes.coords[G.faces.nodes]
-            )[None,:] / np.diff(G.faces.nodePos)[:,None])[0]
+                G.nodes.coords[G.faces.nodes[:,0]]
+            )[None,:] / np.diff(G.faces.nodePos,axis=0))[0]
         pCenters = localEdge2Face.dot(pCenters)
 
         if hingenodes:
             raise NotImplementedError("hingenodes are not yet supported in PRST")
 
         subNormals = np.cross(
-                  G.nodes.coords[G.faces.nodes[nextNode],:]
-                - G.nodes.coords[G.faces.nodes,:],
-                pCenters - G.nodes.coords[G.faces.nodes,:]) / 2
+                  G.nodes.coords[G.faces.nodes[nextNode,0],:]
+              - G.nodes.coords[G.faces.nodes[:,0],:],
+                  pCenters - G.nodes.coords[G.faces.nodes[:,0],:]) / 2
 
         subAreas = np.linalg.norm(subNormals, axis=1)
 
-        subCentroids = (G.nodes.coords[G.faces.nodes,:]
-            + G.nodes.coords[G.faces.nodes[nextNode],:] + pCenters) / 3
+        subCentroids = (G.nodes.coords[G.faces.nodes[:,0],:]
+            + G.nodes.coords[G.faces.nodes[nextNode,0],:] + pCenters) / 3
 
         faceNormals = localEdge2Face.transpose().dot(subNormals)
 
@@ -942,7 +913,7 @@ def computeGeometry(G, findNeighbors=False, hingenodes=None):
         faceNormals = np.column_stack([edgeLength[:,1], -edgeLength[:,0]])
 
         prst.log.info("Computing cell volumes and centroids")
-        numFaces = np.diff(G.cells.facePos)
+        numFaces = np.diff(G.cells.facePos, axis=0)[:,0]
         cellNumbers = prst.utils.rldecode(np.arange(G.cells.num), numFaces)
         cellEdges = edges[cellFaces,:]
         r = G.faces.neighbors[cellFaces, 1] == cellNumbers
@@ -982,10 +953,10 @@ def computeGeometry(G, findNeighbors=False, hingenodes=None):
         raise ValueError("gridDim or nodes.coords have invalid values")
 
     ## Update grid
-    G.faces.areas = faceAreas
+    G.faces.areas = faceAreas[:,np.newaxis]
     G.faces.normals = faceNormals
     G.faces.centroids = faceCentroids
-    G.cells.volumes = cellVolumes
+    G.cells.volumes = cellVolumes[:,np.newaxis]
     G.cells.centroids = cellCentroids
 
     if not hasattr(G, "gridType"):
@@ -1008,7 +979,7 @@ def _findNeighbors(G):
 
     """
     # Internal faces
-    cellNumbers = prst.utils.rldecode(np.arange(0, G.cells.num), np.diff(G.cells.facePos))
+    cellNumbers = prst.utils.rldecode(np.arange(0, G.cells.num), np.diff(G.cells.facePos, axis=0))
     # use mergesort to obtain same j array as in MRST
     # try/except to handle 1D and 2D arrays
     try:
@@ -1039,11 +1010,11 @@ def _findNormalDirections(G):
                         +"is only supported for 3D grids.")
 
     # Assume convex faces. Compute average of node coordinates.
-    faceCenters = _averageCoordinates(np.diff(G.faces.nodePos),
-                                      G.nodes.coords[G.faces.nodes,:])[0]
+    faceCenters = _averageCoordinates(np.diff(G.faces.nodePos, axis=0),
+                G.nodes.coords[G.faces.nodes[:,0],:])[0]
 
     cellCenters, cellNumbers = _averageCoordinates(
-        np.diff(G.cells.facePos), faceCenters[G.cells.faces[:,0], :])
+        np.diff(G.cells.facePos, axis=0), faceCenters[G.cells.faces[:,0], :])
 
     # Compute triple product v1 x v2 . v3 of vectors
     # v1 = faceCenters - cellCenters
@@ -1052,8 +1023,8 @@ def _findNormalDirections(G):
     # n1 and n2 being the first and second nodes of the face. Triple product
     # should be positive for half-faces with positive sign.
 
-    nodes1 = G.nodes.coords[G.faces.nodes[G.faces.nodePos[:-1]    ], :]
-    nodes2 = G.nodes.coords[G.faces.nodes[G.faces.nodePos[:-1] + 1], :]
+    nodes1 = G.nodes.coords[G.faces.nodes[:,0][G.faces.nodePos[:-1,0]    ], :]
+    nodes2 = G.nodes.coords[G.faces.nodes[:,0][G.faces.nodePos[:-1,0] + 1], :]
 
     v1 = faceCenters[G.cells.faces[:,0], :] - cellCenters[cellNumbers]
     v2 = nodes1[G.cells.faces[:,0], :] - faceCenters[G.cells.faces[:,0], :]

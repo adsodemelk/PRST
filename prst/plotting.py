@@ -21,7 +21,7 @@ def _get_cell_nodes(G, cell_idx):
     # To get face nodes in MRST:
     # (The second column in cells_faces are cell indices)
     # >> G.faces.nodes(G.faces.nodePos(cell_idx) : G.faces.nodePos(cell_idx+1)-1, 1)
-    cell_faces = G.cells.faces[G.cells.facePos[cell_idx]:G.cells.facePos[cell_idx+1],0]
+    cell_faces = G.cells.faces[G.cells.facePos[cell_idx,0]:G.cells.facePos[cell_idx+1,0],0]
 
     # The iterator returns nodes for every cell face.
     # The union of these nodes contain the unique nodes for the cell.
@@ -29,21 +29,21 @@ def _get_cell_nodes(G, cell_idx):
     return reduce(
         np.union1d,
         (G.faces.nodes[
-            G.faces.nodePos[face_idx]:G.faces.nodePos[face_idx+1]
+            G.faces.nodePos[face_idx,0]:G.faces.nodePos[face_idx+1,0]
         ] for face_idx in cell_faces)
     )
 
 def _get_cells_faces_num(G):
     """Get number of faces for all cells."""
-    return np.diff(G.cells.facePos)
+    return np.diff(G.cells.facePos, axis=0)
 
 def _get_face_nodes(G, face_idx):
     """Get nodes of a certain face."""
-    return G.faces.nodes[G.faces.nodePos[face_idx] : G.faces.nodePos[face_idx+1]]
+    return G.faces.nodes[G.faces.nodePos[face_idx,0] : G.faces.nodePos[face_idx+1,0]]
 
 def _get_face_nodes_num(G, face_idx):
     """Get number of nodes of a certain face."""
-    return G.faces.nodePos[face_idx+1] - G.faces.nodePos[face_idx]
+    return G.faces.nodePos[face_idx+1,0] - G.faces.nodePos[face_idx,0]
 
 def createVtkUnstructuredGrid(G):
     """

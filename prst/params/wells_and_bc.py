@@ -360,7 +360,7 @@ def _boundaryCellsSubset(G, direction, I0, I1, I2):
                 "A non-zero cell depth is incompatible with a "+\
                 "two-dimensional grid model. Specifically `I3` must be empty.")
 
-    cI, cJ, cK = np.unravel_index(G.cells.indexMap[cells], dims, order="F")
+    cI, cJ, cK = np.unravel_index(G.cells.indexMap.ravel()[cells], dims, order="F")
     if I0 is None:
         I0 = np.arange(dims[d0])
     if I1 is None:

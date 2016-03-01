@@ -32,6 +32,7 @@ class Test_rlencode:
             [3,3,4,5]]))
         assert np.array_equal(n, np.array([2,1,1,2]))
 
+
     def test_example_transposed(self):
         A = np.array([
             [1,1,3,3,3,3],
@@ -56,8 +57,15 @@ class Test_rlencode:
 
 
 class Test_rldecode:
-    """See doctests in utils.py"""
-    pass
+    """See also doctests in utils.py"""
+    def test_1d_A_2d_n(self):
+        A = np.array([7,8,9])
+        n = np.array([[2],[3], [0]])
+        B1 = rldecode(A, n, axis=0)
+        assert np.array_equal(B1, np.array([7, 7, 8, 8, 8]))
+        # A only has one axis, so axis=1 does not make sense
+        with pytest.raises(ValueError):
+            B2 = rldecode(A, n, axis=1)
 
 
 class Test_units:

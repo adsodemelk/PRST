@@ -5,7 +5,7 @@ from __future__ import unicode_literals
 
 import numpy as np
 
-from prst.utils import rldecode
+from prst.utils import rldecode, Struct
 from prst.params.rock import permTensor
 
 def computeTrans(G, rock, K_system="xyz", cellCenters=None, cellFaceCenters=None,
@@ -76,7 +76,8 @@ def computeTrans(G, rock, K_system="xyz", cellCenters=None, cellFaceCenters=None
         print("Computing one-sided transmissibilites.")
 
     # Vectors from cell centroids to face centroids
-    cellNo = rldecode(np.arange(G.cells.num), np.diff(G.cells.facePos))
+    assert G.cells.facePos.ndim == 2, "facePos has wrong dimensions"
+    cellNo = rldecode(np.arange(G.cells.num), np.diff(G.cells.facePos, axis=0))
     if cellCenters is None:
         C = G.cells.centroids
     else:
@@ -133,5 +134,62 @@ def computeTrans(G, rock, K_system="xyz", cellCenters=None, cellFaceCenters=None
 
     return T
     # GRDECL not supported yet in PRST
+
+def initResSol(G, p0, s0=0.0):
+    """
+    Initialize incompressible reservoir solution data structure.
+
+    Synopsis:
+        state = initResSol(G, p0)
+        state = initResSol(G, p0, s0)
+
+    Arguments:
+        G (Grid):
+            Grid structure
+
+        p0 (scalar or ndarray):
+            Initial reservoir pressure. Scalar or array with shape (G.cells.num,).
+
+    Returns: state (State): Initialized reservoir solution structure with
+    attributes:
+        - pressure -- One scalar pressure value for each cell in `G`.
+        - flux     -- One Darcy flux value for each face in `G`.
+        - s        -- Phase saturations for all phases in each cell.
+
+    Remarks:
+        In the case of a (G.cells.num, 3)-shaped array of fluid saturations
+        `state.s`, the columns are generally interpreted as
+
+            0 <-> Aqua, 1 <-> Liquid, 2 <-> Vapour
+
+        Single pressures (p0) and initial phase saturations (s0) are repeated
+        uniformly for all grid cells.
+
+        The initial Darcy flux is zero throughout the reservoir.
+
+    See also:
+        initWellSol (MRST only), solveIncompFlow (MRST only)
+    """
+    p0, s0 = np.atleast_2d(p0, s0)
+
+    nc, nf = G.cells.num, G.faces.num
+    if hasattr(G, "nnc") and hasattr(G.nnc, "cells"):
+        # Expand the number of interfaces with the number of non-neighboring interfaces
+        nf += G.nnc.cells.shape[0]
+
+    if s0.shape[0] == 1:
+        s0 = np.tile(s0, (nc,1))
+    elif s0.shape[0] != nc:
+        raise ValueError(
+        "Initial saturation must either be 1-by-np or "+\
+        "G.cells.num-by-np")
+
+    if p0.size == 1:
+        p0 = np.tile(p0, (nc,1))
+
+    resSol = Struct(pressure=p0,
+                    flux=np.zeros((nf,1)),
+                    s=s0)
+    return resSol
 
 
