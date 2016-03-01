@@ -16,6 +16,8 @@ Submodules:
 __all__ = ["fluid", "transport", "incompTPFA", "capPressureRHS",
            "computePressureRHS"]
 from . import fluid, transport
+import prst.incomp.fluid.incompressible
+import prst.incomp.fluid.utils
 
 # def computeFacePressure # not used in incompTPFA
 # not implemented yet

@@ -16,7 +16,6 @@ from __future__ import print_function
 import six
 
 __all__ = ["incompressible", "utils", "Fluid", "SingleFluid"]
-from . import incompressible, utils
 
 @six.python_2_unicode_compatible
 class Fluid(object):

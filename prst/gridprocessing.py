@@ -8,7 +8,6 @@ import scipy
 from numpy_groupies.aggregate_numpy import aggregate
 
 import prst
-import prst.io
 import prst.utils
 
 __all__ = ["Grid", "tensorGrid", "cartGrid", "computeGeometry"]
