@@ -14,12 +14,12 @@ from prst.params.wells_and_bc import BoundaryCondition
 class TestGravity:
 
     def test_gravity(self):
-        assert len(prst.params.gravity) == 3
+        assert len(prst.gravity) == 3
 
     def test_gravity_reset(self):
-        prst.params.gravity = np.array([0, 0, 0])
-        prst.params.gravity_reset()
-        assert np.linalg.norm(prst.params.gravity) > 9
+        prst.gravity = np.array([0, 0, 0])
+        prst.gravity_reset()
+        assert np.linalg.norm(prst.gravity) > 9
 
 class TestRock:
 

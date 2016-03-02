@@ -2,6 +2,8 @@ from __future__ import print_function
 
 __all__ = ["rldecode", "rlencode", "units", "mcolon", "recursive_diff"]
 
+from . import gridtools
+
 import numpy as np
 
 class Struct(dict):

@@ -5,6 +5,7 @@ import six
 
 import numpy as np
 import scipy
+import scipy.sparse
 from numpy_groupies.aggregate_numpy import aggregate
 
 import prst
