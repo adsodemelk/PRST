@@ -52,6 +52,9 @@ def loadMRSTGrid(matfile, variablename="G"):
     G.cells.facePos = M.cells.facePos.astype(INT_DTYPE) - 1
     G.cells.facePos.shape = (G.cells.facePos.size,1)
     G.cells.faces = M.cells.faces.astype(INT_DTYPE) - 1
+    if G.cells.faces.ndim == 1:
+        # Make into column array
+        G.cells.faces = G.cells.faces[:,np.newaxis]
 
     # computeGeometry attributes may not exist
     try:
