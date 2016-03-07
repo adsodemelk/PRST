@@ -30,3 +30,11 @@ def gravity_reset():
     """Resets gravity to default value."""
     global gravity
     gravity = np.array([0, 0, 9.80665])
+
+import __builtin__
+try:
+    __builtin__.profile
+except AttributeError:
+    # No line profiler, provide a pass-through version
+    def profile(func): return func
+    __builtin__.profile = profile

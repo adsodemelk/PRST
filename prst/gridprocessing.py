@@ -7,9 +7,10 @@ import numpy as np
 import scipy
 import scipy.sparse
 from numpy_groupies.aggregate_numpy import aggregate
+import numba
 
-import prst
 import prst.utils
+from prst import utils
 
 __all__ = ["Grid", "tensorGrid", "cartGrid", "computeGeometry"]
 
@@ -732,7 +733,6 @@ def cartGrid(cellDim, physDim=None):
 
     return G
 
-
 def computeGeometry(G, findNeighbors=False, hingenodes=None):
     """
     Compute and add geometry attributes to grid object.
@@ -793,6 +793,7 @@ def computeGeometry(G, findNeighbors=False, hingenodes=None):
         G = _findNormalDirections(G)
     else:
         if not hasattr(G.faces, "neighbors"):
+            import prst
             prst.log.warn("No field faces.neighbors found. "
                    + "Adding plausible values... proceed with caution!")
             G.faces.neighbors = _findNeighbors(G)
@@ -802,7 +803,7 @@ def computeGeometry(G, findNeighbors=False, hingenodes=None):
     if G.gridDim == 3:
         ## 3D grid
         assert G.nodes.coords.shape[1] == 3
-        faceNumbers = prst.utils.rldecode(np.arange(G.faces.num), np.diff(G.faces.nodePos,axis=0))
+        faceNumbers = utils.rldecode(np.arange(G.faces.num), np.diff(G.faces.nodePos,axis=0))
         nodePos = G.faces.nodePos;
         nextNode = np.arange(1, G.faces.nodes.size+1)
         nextNode[nodePos[1:,0]-1] = nodePos[:-1,0]
@@ -810,10 +811,13 @@ def computeGeometry(G, findNeighbors=False, hingenodes=None):
         # Divide each face into sub-triangles all having one node as pCenter =
         # sum(nodes) / numNodes. Compute area-weighted normals, and add to
         # obtain approx face-normals. Compute resulting areas and centroids.
+        import prst
         prst.log.info("Computing normals, areas and centroids...")
         # Construct a sparse matrix with zeros and ones.
-        localEdge2Face = scipy.sparse.csr_matrix((np.ones(G.faces.nodes.size),
-                [np.arange(G.faces.nodes.size), faceNumbers]))
+        localEdge2Face = scipy.sparse.csc_matrix((
+                np.ones(G.faces.nodes.size),
+                (np.arange(G.faces.nodes.size), faceNumbers)
+            ))
         # Divide each row in the matrix product by the numbers in the final
         # array elementwise
         pCenters = (localEdge2Face.transpose().dot(
@@ -848,12 +852,13 @@ def computeGeometry(G, findNeighbors=False, hingenodes=None):
         # Computation above does not make sense for faces with zero area
         zeroAreaIndices = np.where(faceAreas <= 0)
         if np.any(zeroAreaIndices):
+            import prst
             prst.log.warning("Faces with zero area detected. Such faces should be"
                       + "removed before calling computeGeometry")
 
         # Divide each cell into sub-tetrahedra according to sub-triangles above,
         # all having one node as cCenter = sum(faceCentroids) / #faceCentroids
-
+        import prst
         prst.log.info("Computing cell volumes and centroids")
         cellVolumes = np.zeros(numCells)
         cellCentroids = np.zeros([numCells, 3])
@@ -868,8 +873,16 @@ def computeGeometry(G, findNeighbors=False, hingenodes=None):
             cellFaces = G.cells.faces[indexes,0]
             # triE are the row indices of the non-zero elements in the matrix, while
             # triF are the col indices of the same elements.
-            triE = localEdge2Face[:,cellFaces].tocoo().row
-            triF = localEdge2Face[:,cellFaces].tocoo().col
+            # Original code based on MRST:
+            #
+            #   tmp = localEdge2Face[:,cellFaces]
+            #   triEa, triFa = tmp.nonzero()
+            #
+            # Was very slow, so a custom function for extracting columns for a
+            # csc_matrix was created. It is not fully tested, but is 4x faster.
+            triF, triE = _csc_columns_nonzero(localEdge2Face.indptr,
+                                              localEdge2Face.indices, cellFaces)
+
 
             cellFaceCentroids = faceCentroids[cellFaces,:]
             cellCenter = np.sum(cellFaceCentroids, axis=0) / cellNumFaces
@@ -900,11 +913,9 @@ def computeGeometry(G, findNeighbors=False, hingenodes=None):
     elif G.gridDim == 2 and G.nodes.coords.shape[1] == 2:
         # Sometimes G.cells.faces has a second column with face directions.
         # So we retrieve the index column only.
-        try:
-            cellFaces = G.cells.faces[:,0]
-        except IndexError:
-            cellFaces = G.cells.faces
+        cellFaces = G.cells.faces[:,0]
         ## 2D grid in 2D space
+        import prst
         prst.log.info("Computing normals, areas and centroids")
         edges = G.faces.nodes.reshape([-1,2], order="C")
         # Distance between edge nodes as a vector. "Length" is misleading.
@@ -915,7 +926,7 @@ def computeGeometry(G, findNeighbors=False, hingenodes=None):
         faceAreas = np.linalg.norm(edgeLength, axis=1)
         faceCentroids = np.average(G.nodes.coords[edges], axis=1)
         faceNormals = np.column_stack([edgeLength[:,1], -edgeLength[:,0]])
-
+        import prst
         prst.log.info("Computing cell volumes and centroids")
         numFaces = np.diff(G.cells.facePos, axis=0)[:,0]
         cellNumbers = prst.utils.rldecode(np.arange(G.cells.num), numFaces)
@@ -964,6 +975,7 @@ def computeGeometry(G, findNeighbors=False, hingenodes=None):
     G.cells.centroids = cellCentroids
 
     if not hasattr(G, "gridType"):
+        import prst
         prst.log.warning("Input grid has no type")
         G.gridType = []
 
@@ -971,6 +983,32 @@ def computeGeometry(G, findNeighbors=False, hingenodes=None):
 
     return G
 
+@numba.njit
+def _sort_by_first_column(arr):
+    for index in range(1, arr.shape[0]):
+        currentvalue = arr[index,0]
+        currentother = arr[index,1]
+        position = index
+
+        while position>0 and arr[position-1,0]>currentvalue:
+            arr[position,0], arr[position,1] = arr[position-1,0], arr[position-1,1]
+            position = position-1
+
+        arr[position,0] = currentvalue
+        arr[position,1] = currentother
+
+@numba.njit
+def _csc_columns_nonzero(indptr, indices, columns):
+    indices_pos = 0
+    rowcol_indices = np.empty((100, 2), dtype=np.int32)
+    for col in xrange(len(columns)):
+        i = columns[col]
+        for n in range(indptr[i], indptr[i+1]):
+            rowcol_indices[indices_pos, 0] = indices[n]
+            rowcol_indices[indices_pos, 1] = col
+            indices_pos += 1
+    _sort_by_first_column(rowcol_indices[:indices_pos])
+    return rowcol_indices[:indices_pos,1], rowcol_indices[:indices_pos,0] # col, row
 
 def _findNeighbors(G):
     """Finds plausible values for the G.faces.neighbors array.
@@ -986,12 +1024,8 @@ def _findNeighbors(G):
     cellNumbers = prst.utils.rldecode(np.arange(0, G.cells.num), np.diff(G.cells.facePos, axis=0))
     # use mergesort to obtain same j array as in MRST
     # try/except to handle 1D and 2D arrays
-    try:
-        j = np.argsort(G.cells.faces[:,0], kind="mergesort")
-        cellFaces = G.cells.faces[j,0]
-    except IndexError:
-        j = np.argsort(G.cells.faces, kind="mergesort")
-        cellFaces = G.cells.faces[j]
+    j = np.argsort(G.cells.faces[:,0], kind="mergesort")
+    cellFaces = G.cells.faces[j,0]
     cellNumbers = cellNumbers[j]
     halfFaces = np.where(cellFaces[:-1] == cellFaces[1:])[0]
     N = -np.ones([G.faces.num, 2], dtype=np.int)
