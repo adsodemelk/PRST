@@ -373,14 +373,14 @@ def _boundaryCellsSubset(G, direction, I0, I1, I2):
     if not I2 is None and (np.any(I2 < 0) or np.any(dims[d2] <= I2)):
         raise ValueError("Cell range `I2` outside model.")
 
-    Ii = np.zeros(G.cells.num, dtype=np.bool)
-    Ij = np.zeros(G.cells.num, dtype=np.bool)
+    Ii = np.zeros(G.cells.num, dtype=bool)
+    Ij = np.zeros(G.cells.num, dtype=bool)
     Ii[I0] = True
     Ij[I1] = True
     inSubSet = np.logical_and(Ii[(cI,cJ,cK)[d0]], Ij[(cI,cJ,cK)[d1]])
 
     if not I2 is None:
-        Ik = np.zeros(G.cells.num, dtype=np.bool)
+        Ik = np.zeros(G.cells.num, dtype=bool)
         Ik[I2] = True
         inSubSet = np.logical_and(inSubSet, Ik[(cI,cJ,cK)[d2]])
 

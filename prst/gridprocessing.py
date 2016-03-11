@@ -983,7 +983,7 @@ def computeGeometry(G, findNeighbors=False, hingenodes=None):
 
     return G
 
-@numba.njit
+#@numba.njit
 def _sort_by_first_column(arr):
     for index in range(1, arr.shape[0]):
         currentvalue = arr[index,0]
@@ -997,7 +997,7 @@ def _sort_by_first_column(arr):
         arr[position,0] = currentvalue
         arr[position,1] = currentother
 
-@numba.njit
+#@numba.njit
 def _csc_columns_nonzero(indptr, indices, columns):
     indices_pos = 0
     rowcol_indices = np.empty((100, 2), dtype=np.int32)
@@ -1033,7 +1033,7 @@ def _findNeighbors(G):
     N[cellFaces[halfFaces+1],1] = cellNumbers[halfFaces+1]
 
     # Boundary faces
-    isBoundary = np.ones(cellNumbers.size, dtype=np.bool)
+    isBoundary = np.ones(cellNumbers.size, dtype=bool)
     isBoundary[halfFaces] = False
     isBoundary[halfFaces+1] = False
     N[cellFaces[isBoundary], 0] = cellNumbers[isBoundary]

@@ -15,6 +15,8 @@ from __future__ import division
 from __future__ import print_function
 import six
 
+import numpy as np
+
 __all__ = ["incompressible", "utils", "Fluid", "SingleFluid"]
 
 @six.python_2_unicode_compatible
@@ -84,17 +86,37 @@ class SingleFluid(Fluid):
     def saturation(self, x):
         return x.s
 
-    def relperm(s, derivatives=None):
+    def relperm(self, s, derivatives=None):
+        """
+        Return column array of relative permeabilities.
+
+        Since this is a single fluid, its relative permeability is 1.
+
+        Arguments:
+            derivatives (Optional[list or iterable]):
+                Which saturation derivatives to return. Must be either [0], [0,1] or [0,1,2].
+                E.g., for derivatives=[0,1], both the zeroth derivatives with
+                respect to the saturation, and the first derivatives w.r.t. to
+                the saturation are returned.
+
+        Returns:
+            Either a numpy array of relative permeabilities,
+            or a list of numpy column arrays if derivatives is either [0,1] or [0,1,2].
+        """
+        ret = []
         if derivatives is None:
             derivatives = [0]
         if len(derivatives) >= 1:
             assert derivatives[0] == 0
-            ret = np.ones(len(s))
+            ret.append(np.ones(s.shape))
         if len(derivatives) >= 2:
             assert derivatives[1] == 1
-            ret += (np.zeros(len(s)),)
+            ret.append(np.zeros(s.shape))
         if len(derivatives) >= 3:
             assert derivatives[2] == 2
-            ret += (np.zeros(len(s)),)
-        return ret
+            ret.append(np.zeros(s.shape))
+        if isinstance(ret, list) and len(ret) == 1:
+            return ret[0]
+        else:
+            return ret
 

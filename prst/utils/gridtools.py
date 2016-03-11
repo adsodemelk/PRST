@@ -106,14 +106,17 @@ def getNeighborship(G, kind="Geometrical", incBdry=False, nargout=1):
         N = N[np.all(N != -1, axis=1), :]
 
     if nargout >= 2:
-        isnnc = np.zeros((N.shape[0], 1), dtype=np.bool)
+        isnnc = np.zeros((N.shape[0], 1), dtype=bool)
 
     if kind=="Topological" and hasattr(G, "nnc") and hasattr(G.nnc, "cells"):
         assert G.nnc.cells.shape[1] == 2
         N = np.vstack((N, G.nnc.cells))
 
     if nargout >= 2:
-        isnnc = np.vstack((isnnc, np.ones((G.nnc.cells.shape[0], 1), 1)))
+        try:
+            isnnc = np.vstack((isnnc, np.ones((G.nnc.cells.shape[0], 1), 1)))
+        except AttributeError:
+            pass
         return N, isnnc
     else:
         return N

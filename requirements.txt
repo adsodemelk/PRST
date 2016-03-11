@@ -7,4 +7,4 @@ pytest-cov==2.2.0
 scipy==0.16.1
 six==1.10.0
 numpy_groupies==0.9.1
-
+numba==0.24.0

@@ -16,6 +16,9 @@ class Struct(dict):
     def __init__(self, **kwargs):
         super(Struct, self).__init__(**kwargs)
         self.__dict__ = self
+    def __len__(self):
+        raise TypeError("Struct object has no length.")
+
 
 def rlencode(A, axis=0):
     """

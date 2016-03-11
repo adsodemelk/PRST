@@ -5,6 +5,9 @@ Python Reservoir Simulation Toolbox.
 
 
 """
+from __future__ import print_function
+import sys
+
 import numpy as np
 
 __all__ = ["gridprocessing", "io", "incomp", "plotting", "utils", "params"]
@@ -12,6 +15,9 @@ __all__ = ["gridprocessing", "io", "incomp", "plotting", "utils", "params"]
 import logging
 log = logging.getLogger('prst')
 log.setLevel(logging.DEBUG)
+
+def warning(*args):
+    print("WARNING: ", *args, file=sys.stderr)
 
 verbosity = False
 def verbosity_set(value):

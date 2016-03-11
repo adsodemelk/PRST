@@ -57,7 +57,7 @@ def computeTrans(G, rock, K_system="xyz", cellCenters=None, cellFaceCenters=None
     Returns:
         T: Half-transmissibilities for each local face of each grid cell in the
         grid. The number of half-transmissibilities equals the number of rows
-        in `G.cells.faces`.
+        in `G.cells.faces`. 2D column array.
 
     Comments:
         PLEASE NOTE: Face normals are assumed to have length equal to the
@@ -105,6 +105,7 @@ def computeTrans(G, rock, K_system="xyz", cellCenters=None, cellFaceCenters=None
                 T += tmp
             else:
                 T += np.sum(tmp, axis=1)
+        T = T / np.sum(C*C, axis=1)
 
     elif K_system == "loc_xyz":
         if rock.perm.shape[1] == 1:
@@ -131,7 +132,7 @@ def computeTrans(G, rock, K_system="xyz", cellCenters=None, cellFaceCenters=None
                           "Replaced by absolute values...")
             T[is_neg] = -T[is_neg]
 
-    return T
+    return np.atleast_2d(T).transpose()
     # GRDECL not supported yet in PRST
 
 def initResSol(G, p0, s0=0.0):
