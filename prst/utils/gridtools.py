@@ -120,3 +120,57 @@ def getNeighborship(G, kind="Geometrical", incBdry=False, nargout=1):
         return N, isnnc
     else:
         return N
+
+def getCellNoFaces(G):
+    """
+    Get a list of all half faces, accounting for possible NNC.
+
+    Synopsis:
+        cellNo, cellFaces, isNNC = getCellNoFaces(G)
+
+    Description:
+        This utility function is used to produce a listing of all half faces in
+        a grid along with the respective cells they belong to. While relatively
+        trivial for most grids, this function specifically accounts for
+        non-neighboring connections / NNC.
+
+    Arguments:
+        G (Grid):
+            Grid structure with optional .nnc.cells attribute.
+
+    Returns:
+        cellNo (ndarray):
+            Column array with shape (M,1) where M is the number of geometric
+            half-faces + 2 * number of NNC, where each entry corresponds to
+            cell index of that half face.
+
+        cellFaces (ndarray):
+            Column array with shape (M,1) with M as above, where each entry is
+            the connection index. For the first entries, this is simply the
+            face number. Otherwise, it is the entry of the NNC connection.
+
+    See also:
+        prst.utils.rldecode
+    """
+    import prst.utils as utils # circular import
+
+    cellNo = utils.rldecode(np.arange(G.cells.num), np.diff(G.cells.facePos,axis=0))[:,np.newaxis]
+    cellFaces = G.cells.faces[:,0][:,np.newaxis]
+
+    # Mapping to show which entries in cellNo/cellFaces are resulting from
+    # NNC and not actual geometric faces.
+    isNNC = np.zeros((len(cellNo), 1), dtype=np.bool)
+
+    # If NNC is present, we add these extra connections to cellNo
+    # and cellFaces to allow consisten treatment.
+    if hasattr(G, 'nnc') and hasattr(G.nnc, "cells"):
+        prst.warning("getCellNoFaces is untested for grids with NNC. Compare results with MRST.")
+        # Stack columns into a single column
+        nnc_cells = np.r_[G.nnc.cells[:,0], G.nnc.cells[:,1]][:,np.newaxis]
+        # NNC is located at the end after the regular faces
+        nnc_faceno = G.faces.num + np.arange(G.nnc.cells.shape[0])[:,np.newaxis]
+        cellNo = np.r_[cellNo, nnc_cells] # Stack as 2d column
+        cellFaces = np.r_[cellFaces, nnc_faceno, nnc_faceno] # Stack as column
+        # Added connections are NNC
+        isNNC = np.r_[isNNC, np.ones((len(nnc_cells),1), dtype=np.bool)]
+    return cellNo, cellFaces, isNNC

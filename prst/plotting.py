@@ -90,7 +90,9 @@ def createVtkUnstructuredGrid(G):
 
     return ug
 
-def plotGrid(G, cell_data=None, bgcolor=(0.5,0.5,0.5), size=(400,300), show_edges=True):
+def plotGrid(G, cell_data=None, bgcolor=(0.5,0.5,0.5), size=(400,300),
+             show_edges=True, mlab_figure=True, mlab_show=True,
+             colorbar=True):
     """Plot grid in MayaVi.
 
     Synopsis:
@@ -123,9 +125,13 @@ def plotGrid(G, cell_data=None, bgcolor=(0.5,0.5,0.5), size=(400,300), show_edge
     if not cell_data is None:
         ug.cell_data.scalars = cell_data
         ug.cell_data.scalars.name = "Cell values"
+
     vtkSrc = VTKDataSource(data=ug)
 
-    mlab.figure(bgcolor=bgcolor, size=size)
+    if mlab_figure:
+        mlab.figure(bgcolor=bgcolor, size=size)
+        if size != (400,300):
+            prst.warning("Custom size has no effect for mlab_figure=False")
     dataset = mlab.pipeline.add_dataset(vtkSrc, name="PRST cell data")
 
     # Yellow surface with translucent black wireframe.
@@ -141,7 +147,12 @@ def plotGrid(G, cell_data=None, bgcolor=(0.5,0.5,0.5), size=(400,300), show_edge
         mlab.pipeline.surface(dataset, opacity=1.)
     if show_edges:
         mlab.pipeline.surface(mlab.pipeline.extract_edges(vtkSrc), color=(0,0,0), opacity=0.3)
-    mlab.show()
+
+    if colorbar:
+        mlab.colorbar()
+
+    if mlab_show:
+        mlab.show()
 
 def plotCellData(G, cell_data):
     """See plotGrid."""

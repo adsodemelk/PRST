@@ -7,6 +7,8 @@ import numpy as np
 from prst.utils import rldecode, Struct
 from prst.params.rock import permTensor
 
+__all__ = ["computeTrans", "incompTPFA", "initResSol"]
+
 def computeTrans(G, rock, K_system="xyz", cellCenters=None, cellFaceCenters=None,
         verbose=False):
     """

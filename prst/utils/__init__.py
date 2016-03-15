@@ -1,8 +1,8 @@
 from __future__ import print_function
 
-__all__ = ["rldecode", "rlencode", "units", "mcolon", "recursive_diff"]
+__all__ = ["rldecode", "rlencode", "units", "mcolon", "recursive_diff", "gridtools"]
 
-from . import gridtools
+import prst.utils.gridtools
 
 import numpy as np
 
@@ -16,8 +16,6 @@ class Struct(dict):
     def __init__(self, **kwargs):
         super(Struct, self).__init__(**kwargs)
         self.__dict__ = self
-    def __len__(self):
-        raise TypeError("Struct object has no length.")
 
 
 def rlencode(A, axis=0):
