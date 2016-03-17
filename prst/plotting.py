@@ -92,7 +92,7 @@ def createVtkUnstructuredGrid(G):
 
 def plotGrid(G, cell_data=None, bgcolor=(0.5,0.5,0.5), size=(400,300),
              show_edges=True, mlab_figure=True, mlab_show=True,
-             colorbar=True):
+             colorbar=True, colorbar_kwargs=None):
     """Plot grid in MayaVi.
 
     Synopsis:
@@ -103,9 +103,39 @@ def plotGrid(G, cell_data=None, bgcolor=(0.5,0.5,0.5), size=(400,300),
         G:
             PRST grid object
 
-        cell_data(Optional[ndarray]):
+        cell_data (Optional[ndarray]):
             Array of shape (G.cells.num,) containing one scalar value for each
             cell.
+
+        bgcolor (Optional[3-tuple]):
+            Background color of figure as a tuple of 3 float numbers. Default
+            is grey (0.5, 0.5, 0.5).  Useful for creating figures with a white
+            background.
+
+        size (Optional[2-tuple]):
+            Figure size. Default is (400,300) pixels.
+
+        show_edges (Optional[bool]):
+            Show cell edges. Default is True.
+
+        mlab_figure (Optional[bool]):
+            Whether a new figure is created. Default is True: A new figure is
+            created when this function is called. If False, the grid is plotted
+            in a previous figure. If a previous figure does not exist, one is
+            created.
+
+        mlab_show (Optional[bool]):
+            Whether or not to call mlab.show() to display the figure.
+            If mlab_show=False the figure can be modified after plotting.
+
+        colorbar (Optional[bool]):
+            Whether or not to show a colorbar.
+
+        colorbar_kwargs (Optional[dict]):
+            Keyword arguments passed on to mlab.colorbar(). For example, to
+            orient the colorbar vertically, let
+            colorbar_kwargs={'orientation':'vertical'}.
+            Default is {} (no arguments).
 
     Returns: None
 
@@ -113,6 +143,13 @@ def plotGrid(G, cell_data=None, bgcolor=(0.5,0.5,0.5), size=(400,300),
     create a custom plotting function utilizing
     prst.plotting.createVtkUnstructuredGrid manually. See the source code of
     this function.
+
+    Technical note: VtkUnstructuredGrid does not support face data. Only cell
+    data and point data. This function can only display cell data for now, but
+    point data should be easy to implement. Data scaling (e.g., scaling z-axis)
+    is not supported in MayaVi either, but is possible to mimic using a custom
+    plotting function and the extent=(0,1,0,1,0,1) parameter of
+    mlab.pipeline.surface.
     """
     try:
         from tvtk.api import tvtk
@@ -149,7 +186,9 @@ def plotGrid(G, cell_data=None, bgcolor=(0.5,0.5,0.5), size=(400,300),
         mlab.pipeline.surface(mlab.pipeline.extract_edges(vtkSrc), color=(0,0,0), opacity=0.3)
 
     if colorbar:
-        mlab.colorbar()
+        if colorbar_kwargs is None:
+            colorbar_kwargs = {}
+        mlab.colorbar(**colorbar_kwargs)
 
     if mlab_show:
         mlab.show()
