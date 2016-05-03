@@ -1,10 +1,14 @@
 from __future__ import print_function
+import copy
 
 __all__ = ["rldecode", "rlencode", "units", "mcolon", "recursive_diff", "gridtools"]
 
 import prst.utils.gridtools
 
 import numpy as np
+import scipy.sparse
+from scipy.sparse import csr_matrix
+import scipy.sparse as sps
 
 class Struct(dict):
     """
@@ -236,3 +240,162 @@ def recursive_diff(A, B, indent=0):
             pprint("NOT COMPARABLE, ", end="")
 
         print("("+A.__class__.__name__+","+B.__class__.__name__+")")
+
+
+class ADI(object):
+    """ADI: Automatic DIfferentiation
+
+    Simple implementation of automatic differentiation for easy construction
+    of Jacobian matrices.
+
+    Synopsis:
+        x = ADI(value, jacobian)
+
+    Arguments:
+        value(np.ndarray):
+            The numerical value of the object. Must be a NumPy column array.
+            Not compatible with matrices.
+
+        jacobian(list[scipy.sparse.csr_matrix]):
+            The Jacobian of the object. Split into parts to improve performance.
+
+    Comment:
+        This class is typically instantiated for a set of variables using
+        initVariablesADI, not by itself.
+
+    See also:
+        initVariablesADI
+    """
+
+    def __init__(self, val, jac):
+        self.val = val
+        self.jac = jac
+        if not isinstance(self.jac, list):
+            self.jac = [self.jac,]
+
+    def __repr__(self):
+        jacstring = str([block.shape for block in self.jac])
+        return "(val: {0}.T, jac block sizes: {1})".format(self.val.T, jacstring)
+
+    def copy(self):
+        return copy.deepcopy(self)
+
+    def __len__(self):
+        return len(self.val)
+
+    @property
+    def shape(self):
+        return self.val.shape
+
+    @property
+    def ndim(self):
+        return self.val.ndim
+
+    def __ge__(u, v):
+        return u.val >= v.val
+
+    def __gt__(u, v):
+        return u.val > v.val
+
+    def __le__(u, v):
+        return u.val <= v.val
+
+    def __lt__(u, v):
+        return u.val < v.val
+
+    def __pos__(u):
+        return u.copy()
+
+    def __neg__(u):
+        return ADI(-u.val, [-j for j in u.jac])
+
+    def __add__(u, v):
+        if isinstance(u, ADI) and isinstance(v, ADI):
+            if len(u.val) == len(v.val):
+                return ADI(u.val + v.val, [ju+jv for (ju,jv) in zip(u.jac, v.jac)])
+            if len(v.val) == 1:
+                # Tile v.jac to same length as u.jac since sparse matrices
+                # don't broadcast properly.
+                # https://github.com/scipy/scipy/issues/2128
+                vjac = [sps.bmat([[j]]*len(u.val)) for j in v.jac]
+                retjac = [ju+jv for (ju,jv) in zip(u.jac, vjac)]
+                return ADI(u.val+v.val, retjac)
+            if len(u.val) == 1:
+                # Vice versa, this time tile u instead
+                ujac = [sps.bmat([[j]]*len(v.val)) for j in u.jac]
+                retjac = [ju+jv for (ju,jv) in zip(ujac, v.jac)]
+                return ADI(u.val+v.val, retjac)
+            raise ValueError("Dimension mismatch")
+        pass
+    # radd
+
+    # sub
+
+    # rsub
+
+    # dot
+
+    # mul
+
+    # rmul
+
+    # pow
+
+    # div /truediv
+
+    # getattr
+
+    # setattr
+
+    # max
+
+    # min
+
+    # sum
+
+    # cumsum
+
+    def __pow__(u, v):
+        if not isinstance(v, ADI): # v is a scalar
+            return ADI(u.val**v, _lMultDiag(v*u.val**(v-1), u.jac))
+
+
+def initVariablesADI(*variables):
+    # Convert all inputs to arrays
+    variables = map(np.atleast_2d, variables)
+    numvals = np.array([len(variable) for variable in variables])
+    n = len(variables)
+
+    ret = [None]*n
+    for i in range(n):
+        nrows = numvals[i]
+        # Set Jacobians wrt other variables to zero-matrices
+        jac = [None]*n
+        for j in np.r_[0:i, (i+1):n]:
+            ncols = numvals[j]
+            jac[j] = scipy.sparse.csr_matrix((nrows, ncols))
+
+        # Set Jacobian of current variable wrt itself to the identity matrix.
+        jac[i] = scipy.sparse.identity(nrows, format="csr")
+
+        ret[i] = ADI(variables[i], jac)
+    return ret
+
+
+def _lMultDiag(d, J1):
+    """TODO"""
+    print("d", d)
+    print("J1", J1)
+    n = len(d)
+    if np.any(d):
+        ix = np.arange(n)
+        #csr_matrix((data, (row_ind, col_ind)), [shape=(M, N)])
+        D = csr_matrix((d.ravel(), (ix, ix)), shape=(n,n))
+    else:
+        D = 0
+
+    # J1 is a list of sparse blocks comprising the Jacobian
+    J = [None] * len(J1)
+    for k in range(len(J)):
+        J[k] = D*J1[k]
+    return J
