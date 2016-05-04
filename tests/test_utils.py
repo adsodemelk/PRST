@@ -160,13 +160,65 @@ class Test_ADI:
         assert np.array_equal(w.jac[0].toarray(), np.eye(2) + np.array([[2,2],[2,2]]))
         assert np.array_equal(w.jac[1].toarray(), np.array([[1], [1]]))
 
-
         # 3) Both AD, len(u)==1
         w = z + x
         assert np.array_equal(w.val, x.val + z.val)
         assert np.array_equal(w.val, np.array([[2,3]]).T)
         assert np.array_equal(w.jac[0].toarray(), np.eye(2) + np.array([[2,2],[2,2]]))
         assert np.array_equal(w.jac[1].toarray(), np.array([[1], [1]]))
+
         # 4) u AD, v scalar, len(v)==1
+        x, y = initVariablesADI(np.array([[1,2]]).T, np.array([[4]]).T)
+        w = x + 5
+        assert np.array_equal(w.val, np.array([[1+5,2+5]]).T)
+        assert np.array_equal(w.jac[0].toarray(), x.jac[0].toarray())
+        assert np.array_equal(w.jac[1].toarray(), x.jac[1].toarray())
+        w2 = 5 + x
+        assert np.array_equal(w2.val, np.array([[1+5,2+5]]).T)
+        assert np.array_equal(w.jac[0].toarray(), x.jac[0].toarray())
+        assert np.array_equal(w.jac[1].toarray(), x.jac[1].toarray())
+
         # 5) u AD, v vector, same length
-        # 6) Invalid, throw error
+        x, y = initVariablesADI(np.array([[1,2]]).T, np.array([[4]]).T)
+        w1 = x + np.array([[2,1]]).T
+        assert np.array_equal(w1.val, np.array([[1+2,2+1]]).T)
+        assert np.array_equal(w1.jac[0].toarray(), x.jac[0].toarray())
+        assert np.array_equal(w1.jac[1].toarray(), x.jac[1].toarray())
+        w2 = np.array([[2,1]]).T + x
+        assert np.array_equal(w2.val, np.array([[1+2,2+1]]).T)
+        assert np.array_equal(w2.jac[0].toarray(), x.jac[0].toarray())
+        assert np.array_equal(w2.jac[1].toarray(), x.jac[1].toarray())
+
+        # 6) Different length AD vectors
+        with pytest.raises(ValueError):
+            x, y = initVariablesADI(np.array([[1,2]]).T, np.array([[1,2,3]]).T)
+            x + y
+
+    def test_sub(self):
+        x, y = initVariablesADI(np.array([[1,2]]).T, np.array([[4]]).T)
+        z = x - y
+        assert np.array_equal(z.val, x.val - y.val)
+
+    def test_rsub(self):
+        x, y = initVariablesADI(np.array([[1,2]]).T, np.array([[4]]).T)
+        z = 5 - x
+        assert np.array_equal(z.val, 5-x.val)
+        assert (x+z).jac[0].nnz == 0
+        assert (x+z).jac[1].nnz == 0
+
+    def test_mul(self):
+        # z = x*y = [1*4, 2*5]' = [4, 10]
+        # dz/dx = x*Jy + y*Jx = x + y   // identity Jacobians
+        #       = [1]*[1 0]  +  [4][1 0]
+        #         [2]*[0 1]  +  [5][0 1]
+        # = [1 0] + [4 0] = [5 0]
+        #   [0 2] + [0 5] = [0 7]
+        x, y = initVariablesADI(np.array([[1,2]]).T, np.array([[4,5]]).T)
+        z = x*y
+        assert np.array_equal(z.val, np.array([[4, 10]]).T)
+        assert np.array_equal(np.array([[5,0],[0,7]]), z.jac[0].toarray())
+
+    def test_dot(self):
+        x, y = initVariablesADI(np.array([[1,2]]).T, np.array([[4]]).T)
+        y.dot(5)
+        # TODO complete test

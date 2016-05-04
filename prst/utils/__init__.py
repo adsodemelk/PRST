@@ -270,6 +270,7 @@ class ADI(object):
     def __init__(self, val, jac):
         self.val = val
         self.jac = jac
+        self.__array_priority__ = 100
         if not isinstance(self.jac, list):
             self.jac = [self.jac,]
 
@@ -303,14 +304,14 @@ class ADI(object):
     def __lt__(u, v):
         return u.val < v.val
 
-    def __pos__(u):
+    def __pos__(u): # +u
         return u.copy()
 
-    def __neg__(u):
+    def __neg__(u): # -u
         return ADI(-u.val, [-j for j in u.jac])
 
-    def __add__(u, v):
-        if isinstance(u, ADI) and isinstance(v, ADI):
+    def __add__(u, v): # u + v
+        if isinstance(v, ADI):
             if len(u.val) == len(v.val):
                 return ADI(u.val + v.val, [ju+jv for (ju,jv) in zip(u.jac, v.jac)])
             if len(v.val) == 1:
@@ -326,18 +327,53 @@ class ADI(object):
                 retjac = [ju+jv for (ju,jv) in zip(ujac, v.jac)]
                 return ADI(u.val+v.val, retjac)
             raise ValueError("Dimension mismatch")
-        pass
-    # radd
+        # v isn't AD object
+        v = np.atleast_2d(v)
+        return ADI(u.val + v, copy.deepcopy(u.jac))
 
-    # sub
+    def __radd__(v, u): # u + v
+        return v.__add__(u)
 
-    # rsub
+    def __sub__(u, v):
+        return u.__add__(-v)
 
-    # dot
+    def __rsub__(v, u): # u - v
+        return (-v).__add__(u)
 
     # mul
+    def __mul__(u, v):
+        """Hadamard product u*v."""
+        if isinstance(v, ADI):
+            if len(u.val) == len(v.val):
+                # Note: scipy.sparse.diags has changed parameters between
+                # versions 0.16x and 0.17x. This code is only tested on 0.16x.
+                uJv = [sps.diags([u.val.flat],[0])*jv for jv in v.jac] # MATRIX multiplication
+                vJu = [sps.diags([v.val.flat],[0])*ju for ju in u.jac] # MATRIX multiplication
+                jac = [a+b for (a,b) in zip(uJv, vJu)]
+                return ADI(u.val*v.val, jac)
+            if len(v.val) == 1:
+                # Fix dimensions and recurse
+                vval = np.tile(v.val, u.val.shape[0])
+                vjac = [sps.bmat([[j]]*len(u.val)) for j in v.jac]
+                return u.__mul__(ADI(vval, vjac))
+            if len(u.val) == 1:
+                # Fix dimensions and recurse
+                uval = np.tile(u.val, v.val.shape[0])
+                ujac = [sps.bmat([[j]]*len(v.val)) for j in u.jac]
+                return u.__mul__(ADI(uval, ujac))
+            return ADI(u.val+v.val, retjac)
+        else:
+            pass
 
     # rmul
+
+    def dot(u, A): # u x A
+        """Matrix multiplication, u x A."""
+        if len(u) == 1 and A.shape[0] == 1 and A.shape[1] == 1:
+            return u*A
+        raise ValueError("dot(u_ad,v) only valid for 1x1 parameters.")
+
+
 
     # pow
 
