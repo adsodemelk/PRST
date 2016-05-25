@@ -23,6 +23,8 @@ class TestComputeTrans:
 
         mrst_T = loadmat(getpath("test_solvers/computeTrans_gravityColumn_T.mat"),
                          squeeze_me=True, struct_as_record=False)["T"]
+        if mrst_T.ndim == 1:
+            mrst_T = mrst_T[:,np.newaxis]
 
         assert np.array_equal(T.shape, mrst_T.shape)
         assert np.allclose(T, mrst_T)

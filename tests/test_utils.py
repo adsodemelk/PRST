@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -206,17 +207,91 @@ class Test_ADI:
         assert (x+z).jac[0].nnz == 0
         assert (x+z).jac[1].nnz == 0
 
-    def test_mul(self):
-        # z = x*y = [1*4, 2*5]' = [4, 10]
-        # dz/dx = x*Jy + y*Jx = x + y   // identity Jacobians
-        #       = [1]*[1 0]  +  [4][1 0]
-        #         [2]*[0 1]  +  [5][0 1]
-        # = [1 0] + [4 0] = [5 0]
-        #   [0 2] + [0 5] = [0 7]
+    def test_mul_ad_ad(self):
+        # Answers computed using MRST's initVariablesADI
         x, y = initVariablesADI(np.array([[1,2]]).T, np.array([[4,5]]).T)
         z = x*y
         assert np.array_equal(z.val, np.array([[4, 10]]).T)
-        assert np.array_equal(np.array([[5,0],[0,7]]), z.jac[0].toarray())
+        assert np.array_equal(np.array([[4,0],[0,5]]), z.jac[0].toarray())
+        assert np.array_equal(np.array([[1,0],[0,2]]), z.jac[1].toarray())
+
+        f = x*x*y
+        g = x*y*z
+        h = f*g
+        assert np.array_equal(h.val, np.array([[64, 2000]]).T)
+        assert np.array_equal(np.array([[256,0],[0,4000]]), h.jac[0].toarray())
+        assert np.array_equal(np.array([[48,0],[0,1200]]), h.jac[1].toarray())
+
+        w = f*g + f + g*x*y
+        assert np.array_equal(w.val, np.array([[132, 3020]]).T)
+        assert np.array_equal(np.array([[456,0],[0,5520]]), w.jac[0].toarray())
+        assert np.array_equal(np.array([[97,0],[0,1804]]), w.jac[1].toarray())
+
+    def test_mul_ad_scalar(self):
+        x, y = initVariablesADI(np.array([[1,2,3]]).T, np.array([[4,5,6]]).T)
+        w = x*x*y*3 + x*y*y*5
+        assert np.array_equal(np.array([[92, 310, 702]]).T, w.val)
+        assert np.array_equal(np.array([[104,0,0],[0,185,0], [0,0,288]]), w.jac[0].toarray())
+        assert np.array_equal(np.array([[43,0,0],[0,112,0], [0,0,207]]), w.jac[1].toarray())
+
+    def test_mul_ad_vector(self):
+        x, y = initVariablesADI(np.array([[1,2,3]]).T, np.array([[4,5,6]]).T)
+        w = x*x*y*np.array([[3],[3],[3]]) + x*y*y*np.array([[5],[5],[5]])
+        assert np.array_equal(np.array([[92, 310, 702]]).T, w.val)
+        assert np.array_equal(np.array([[104,0,0],[0,185,0], [0,0,288]]), w.jac[0].toarray())
+        assert np.array_equal(np.array([[43,0,0],[0,112,0], [0,0,207]]), w.jac[1].toarray())
+
+    def test_rmul(self):
+        x, y = initVariablesADI(np.array([[1,2,3]]).T, np.array([[4,5,6]]).T)
+        z = 3*x
+        assert np.array_equal(np.array([[3, 6, 9]]).T, z.val)
+        assert np.array_equal(np.array([[3,0,0],[0,3,0], [0,0,3]]), z.jac[0].toarray())
+        assert np.array_equal(np.array([[0,0,0],[0,0,0], [0,0,0]]), z.jac[1].toarray())
+        w = 3*x*x*y + 5*x*y*y
+        assert np.array_equal(np.array([[92, 310, 702]]).T, w.val)
+        assert np.array_equal(np.array([[104,0,0],[0,185,0], [0,0,288]]), w.jac[0].toarray())
+        assert np.array_equal(np.array([[43,0,0],[0,112,0], [0,0,207]]), w.jac[1].toarray())
+
+    def test_pow_ad_scalar_and_ad_vec_len1(self):
+        x, y = initVariablesADI(np.array([[1,2]]).T, np.array([[4,5]]).T)
+        z = x**2
+        assert np.array_equal(np.array([[1, 4]]).T, z.val)
+        assert np.array_equal(np.array([[2,0],[0,4]]), z.jac[0].toarray())
+        assert np.array_equal(np.array([[0,0],[0,0]]), z.jac[1].toarray())
+
+    def test_pow_ad_ad_samelen(self):
+        x, y = initVariablesADI(np.array([[1,2]]).T, np.array([[4,5]]).T)
+        z = x**y
+        dz2dy2 = 2**5 * np.log(2)
+        print(z.jac[1].toarray())
+        assert np.array_equal(np.array([[1, 32]]).T, z.val)
+        assert np.array_equal(np.array([[4,0],[0,80]]), z.jac[0].toarray())
+        assert np.array_equal(np.array([[0,0],[0,dz2dy2]]), z.jac[1].toarray())
+
+    def test_pow_ad_ad_either_len1(self):
+        x, y = initVariablesADI(np.array([[1,2,3]]).T, np.array([[2,3,4]]).T)
+        u = x+y
+        r = 2**u
+        s = u**2
+
+        drdx = 2**u.val * np.log(2) * u.jac[0].toarray()
+        drdy = 2**u.val * np.log(2) * u.jac[1].toarray()
+        assert np.array_equal(np.array([[8, 32, 128]]).T, r.val)
+        assert np.array_equal(drdx, r.jac[0].toarray())
+        assert np.array_equal(drdy, r.jac[1].toarray())
+
+        assert np.array_equal(np.array([[9, 25, 49]]).T, s.val)
+        assert np.array_equal(np.array([[6,0,0],[0,10,0],[0,0,14]]), s.jac[0].toarray())
+        assert np.array_equal(np.array([[6,0,0],[0,10,0],[0,0,14]]), s.jac[1].toarray())
+
+    def test_pow_different_len(self):
+        x, y = initVariablesADI(np.array([[1,2,3]]).T, np.array([[2,3,4,5]]).T)
+        with pytest.raises(ValueError):
+            x**y
+        with pytest.raises(ValueError):
+            x**y.val
+        with pytest.raises(ValueError):
+            x.val**y
 
     def test_dot(self):
         x, y = initVariablesADI(np.array([[1,2]]).T, np.array([[4]]).T)

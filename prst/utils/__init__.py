@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from __future__ import print_function
 import copy
 
@@ -347,6 +348,7 @@ class ADI(object):
             if len(u.val) == len(v.val):
                 # Note: scipy.sparse.diags has changed parameters between
                 # versions 0.16x and 0.17x. This code is only tested on 0.16x.
+                # TODO test code in SciPy 0.17x
                 uJv = [sps.diags([u.val.flat],[0])*jv for jv in v.jac] # MATRIX multiplication
                 vJu = [sps.diags([v.val.flat],[0])*ju for ju in u.jac] # MATRIX multiplication
                 jac = [a+b for (a,b) in zip(uJv, vJu)]
@@ -362,20 +364,64 @@ class ADI(object):
                 ujac = [sps.bmat([[j]]*len(v.val)) for j in u.jac]
                 return u.__mul__(ADI(uval, ujac))
             return ADI(u.val+v.val, retjac)
+        elif np.isscalar(v):
+            vJu = [v*ju for ju in u.jac] # MATRIX multiplication
+            return ADI(u.val*v, vJu)
+        elif isinstance(v, np.ndarray):
+            print("yourmon")
+            v = np.atleast_2d(v)
+            vJu = [sps.diags([v.flat], [0])*ju for ju in u.jac] # MATRIX multiplication
+            return ADI(u.val*v, vJu)
         else:
-            pass
+            raise ValueError("u*v: v must be scalar or ndarray.")
+
+    def __rmul__(v, u):
+        # u * v = v * u
+        return v.__mul__(u)
 
     # rmul
 
     def dot(u, A): # u x A
         """Matrix multiplication, u x A."""
+        if not isinstance(A, ADI):
+            A = np.atleast_2d(A)
         if len(u) == 1 and A.shape[0] == 1 and A.shape[1] == 1:
             return u*A
         raise ValueError("dot(u_ad,v) only valid for 1x1 parameters.")
 
+    def __pow__(u, v):
+        return u._pow(u, v)
 
+    # This method is static so that it can be called with non-ADI u
+    # E.g. when calculating 2**u, where u is ADI.
+    @staticmethod
+    def _pow(u, v):
+        """Elementwise power, u**v."""
+        if not isinstance(v, ADI): # u is AD, v is a scalar or vector
+            v = np.atleast_2d(v)
+            tmp = v*u.val**(v-1)
+            uvJac = [sps.diags(tmp.flat, 0)*ju for ju in u.jac]
+            return ADI(u.val**v, uvJac)
+        elif not isinstance(u, ADI): # u is a scalar, v is AD
+            tmp = u**v.val*np.log(u)
+            uvJac = [sps.diags(tmp.flat, 0)*jv for jv in v.jac]
+            return ADI(u**v.val, uvJac)
+        else: # u and v are ADI objects of same length
+            if len(u) != len(v):
+                raise ValueError("Must be same length")
+            # d(u^v)/dx = diag(u^v o (v / u))*
+            # + diag(u^v o log(u))*J
+            tmp1 = u.val**v.val * v.val/u.val
+            tmp2 = u.val**v.val * np.log(u.val)
+            uvJacPart1 = [sps.diags(tmp1.flat, 0)*ju for ju in u.jac]
+            uvJacPart2 = [sps.diags(tmp2.flat, 0)*jv for jv in v.jac]
+            uvJac = [a+b for (a,b) in zip(uvJacPart1, uvJacPart2)]
+            return ADI(u.val**v.val, uvJac)
 
-    # pow
+    def __rpow__(v, u):
+        """u**v where u is not ADI."""
+        return v._pow(u, v)
+
 
     # div /truediv
 
@@ -391,9 +437,6 @@ class ADI(object):
 
     # cumsum
 
-    def __pow__(u, v):
-        if not isinstance(v, ADI): # v is a scalar
-            return ADI(u.val**v, _lMultDiag(v*u.val**(v-1), u.jac))
 
 
 def initVariablesADI(*variables):
