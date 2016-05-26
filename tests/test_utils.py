@@ -241,6 +241,17 @@ class Test_ADI:
         assert np.array_equal(np.array([[104,0,0],[0,185,0], [0,0,288]]), w.jac[0].toarray())
         assert np.array_equal(np.array([[43,0,0],[0,112,0], [0,0,207]]), w.jac[1].toarray())
 
+    def test_mul_ADI3_ADI1(self):
+        x, y = initVariablesADI(np.array([[1,2]]).T, np.array([[4]]).T)
+        s1 = y*x
+        s2 = x*y
+        assert np.array_equal(np.array([[4, 8]]).T, s1.val)
+        assert np.array_equal(np.array([[4,0],[0,4]]), s1.jac[0].toarray())
+        assert np.array_equal(np.array([[1],[2]]), s1.jac[1].toarray())
+        assert np.array_equal(np.array([[4, 8]]).T, s2.val)
+        assert np.array_equal(np.array([[4,0],[0,4]]), s2.jac[0].toarray())
+        assert np.array_equal(np.array([[1],[2]]), s2.jac[1].toarray())
+
     def test_rmul(self):
         x, y = initVariablesADI(np.array([[1,2,3]]).T, np.array([[4,5,6]]).T)
         z = 3*x
@@ -268,7 +279,7 @@ class Test_ADI:
         assert np.array_equal(np.array([[4,0],[0,80]]), z.jac[0].toarray())
         assert np.array_equal(np.array([[0,0],[0,dz2dy2]]), z.jac[1].toarray())
 
-    def test_pow_ad_ad_either_len1(self):
+    def test_pow_ad_scalar_or_scalar_ad(self):
         x, y = initVariablesADI(np.array([[1,2,3]]).T, np.array([[2,3,4]]).T)
         u = x+y
         r = 2**u
@@ -292,6 +303,46 @@ class Test_ADI:
             x**y.val
         with pytest.raises(ValueError):
             x.val**y
+
+    def test_div(self):
+        x, y = initVariablesADI(np.array([[1,2,3]]).T, np.array([[2,3,4]]).T)
+        u = x+2*y
+
+        # ADI divided by scalar
+        s = u/2
+        assert np.array_equal(np.array([[2.5, 4, 5.5]]).T, s.val)
+        assert np.array_equal(np.array([[0.5,0,0],[0,0.5,0],[0,0,0.5]]), s.jac[0].toarray())
+        assert np.array_equal(np.array([[1,0,0],[0,1,0],[0,0,1]]), s.jac[1].toarray())
+
+        # Scalar divided by ADI
+        s = 440/u
+        assert np.array_equal(np.array([[88, 55, 40]]).T, s.val)
+        assert np.allclose(np.array([[-17.6,0,0],[0,-6.875,0],[0,0,-3.636363636363637]]), s.jac[0].toarray())
+        assert np.allclose(np.array([[-35.2,0,0],[0,-13.75,0],[0,0,-7.272727272727273]]), s.jac[1].toarray())
+
+        # ADI divided by ADI
+        s = u / (x+y)
+        assert np.allclose(np.array([[1.666666666666667, 1.6, 1.571428571428571]]).T, s.val)
+        assert np.allclose(np.array([[-0.222222222222222,0,0],[0,-0.12,0],[0,0,-0.081632653061225]]), s.jac[0].toarray())
+        assert np.allclose(np.array([[0.111111111111111,0,0],[0,0.08,0],[0,0,0.061224489795918]]), s.jac[1].toarray())
+
+        # ADI divided by ADI of length 1
+        x, y = initVariablesADI(np.array([[8,2]]).T, np.array([[2]]).T)
+        s = x/y
+        assert np.array_equal(np.array([[4,1]]).T, s.val)
+        assert np.array_equal(np.array([[0.5,0],[0,0.5]]), s.jac[0].toarray())
+        assert np.array_equal(np.array([[-2],[-0.5]]), s.jac[1].toarray())
+
+        # ADI of length 1 divided by vector
+        s = y/np.array([[4],[2]])
+        assert isinstance(s, ADI)
+        assert isinstance(s.jac[0], sps.spmatrix)
+        assert isinstance(s.jac[1], sps.spmatrix)
+        assert np.array_equal(np.array([[0.5,1]]).T, s.val)
+        assert np.array_equal(np.array([[0,0],[0,0]]), s.jac[0].toarray())
+        assert np.array_equal(np.array([[0.25],[0.5]]), s.jac[1].toarray())
+
+
 
     def test_dot(self):
         x, y = initVariablesADI(np.array([[1,2]]).T, np.array([[4]]).T)

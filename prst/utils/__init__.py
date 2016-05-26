@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import print_function
+from __future__ import print_function, division
 import copy
 
 __all__ = ["rldecode", "rlencode", "units", "mcolon", "recursive_diff", "gridtools"]
@@ -355,23 +355,29 @@ class ADI(object):
                 return ADI(u.val*v.val, jac)
             if len(v.val) == 1:
                 # Fix dimensions and recurse
-                vval = np.tile(v.val, u.val.shape[0])
+                vval = np.tile(v.val, (u.val.shape[0],1) )
                 vjac = [sps.bmat([[j]]*len(u.val)) for j in v.jac]
                 return u.__mul__(ADI(vval, vjac))
             if len(u.val) == 1:
                 # Fix dimensions and recurse
-                uval = np.tile(u.val, v.val.shape[0])
+                uval = np.tile(u.val, (v.val.shape[0],1) )
                 ujac = [sps.bmat([[j]]*len(v.val)) for j in u.jac]
-                return u.__mul__(ADI(uval, ujac))
-            return ADI(u.val+v.val, retjac)
+                return ADI(uval, ujac).__mul__(v)
+            raise ValueError("Dimension mismatch")
         elif np.isscalar(v):
-            vJu = [v*ju for ju in u.jac] # MATRIX multiplication
-            return ADI(u.val*v, vJu)
+            return ADI(u.val*v, [v*ju for ju in u.jac])
         elif isinstance(v, np.ndarray):
-            print("yourmon")
-            v = np.atleast_2d(v)
-            vJu = [sps.diags([v.flat], [0])*ju for ju in u.jac] # MATRIX multiplication
-            return ADI(u.val*v, vJu)
+            if len(u) == 1:
+                val = u.val * v
+                jac = [sps.diags(v.flat,0)*sps.bmat([[j]]*len(v)) for j in u.jac]
+                return ADI(val, jac)
+            if len(v) == 1:
+                return ADI(u.val*v, [v*ju for ju in u.jac])
+            if len(u.val) == len(v):
+                v = np.atleast_2d(v)
+                vJu = [sps.diags(v.flat, 0)*ju for ju in u.jac] # MATRIX multiplication
+                return ADI(u.val*v, vJu)
+            raise ValueError("Dimension mismatch")
         else:
             raise ValueError("u*v: v must be scalar or ndarray.")
 
@@ -421,6 +427,18 @@ class ADI(object):
     def __rpow__(v, u):
         """u**v where u is not ADI."""
         return v._pow(u, v)
+
+    def __div__(u, v):
+        return u.__truediv__(v)
+
+    def __truediv__(u, v):
+        return u * v**(-1.0)
+
+    def __rdiv__(v, u):
+        return v.__rtruediv__(u)
+
+    def __rtruediv__(v, u):
+        return u * v**(-1.0)
 
 
     # div /truediv
