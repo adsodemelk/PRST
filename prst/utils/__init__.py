@@ -385,8 +385,6 @@ class ADI(object):
         # u * v = v * u
         return v.__mul__(u)
 
-    # rmul
-
     def dot(u, A): # u x A
         """Matrix multiplication, u x A."""
         if not isinstance(A, ADI):
@@ -440,12 +438,43 @@ class ADI(object):
     def __rtruediv__(v, u):
         return u * v**(-1.0)
 
+    def __getitem__(u, s):
+        """
+        Slices the column array using NumPy syntax.
 
-    # div /truediv
+        Examples: (x is ADI object)
 
-    # getattr
+            x[(2,1),:]
+            x[1]
+            x[1,:]
+            x[np.array([True,True,False])]
+            x[np.array([False,False,False]),:]
+            x[np.array([2,1,0]),:]
+            x[np.array([2]),:]
+            x[::-1]
+        """
+        val = np.atleast_2d(u.val[s])
+        if val.shape[1] != 1:
+            raise ValueError("Slice type not supported")
+        jac = [j[s] for j in u.jac]
+        return ADI(val, jac)
 
-    # setattr
+    def __setitem__(u, s, v):
+        """
+        Sets values in ADI vector.
+
+        If the right side is non-ADI, the corresponding Jacobian rows are set to zero.
+        If the right side is ADI, the corresponding Jacobian rows are overwritten.
+        """
+        if isinstance(v, ADI):
+            u.val[s] = v.val
+            for i in range(len(u.jac)):
+                u.jac[i][s] = v.jac[i]
+        else:
+            u.val[s] = v
+            for i in range(len(u.jac)):
+                u.jac[i][s] = 0
+
 
     # max
 

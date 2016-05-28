@@ -342,9 +342,31 @@ class Test_ADI:
         assert np.array_equal(np.array([[0,0],[0,0]]), s.jac[0].toarray())
         assert np.array_equal(np.array([[0.25],[0.5]]), s.jac[1].toarray())
 
+    def test_getitem(self):
+        x, y, z = initVariablesADI(np.array([[0,1,2,3]]).T, np.array([[0,1,2]]).T, np.array([[1]]))
+        x0 = x[0]
+        assert np.array_equal(np.array([[0]]).T, x0.val)
+        assert np.array_equal(np.array([[1,0,0,0]]), x0.jac[0].toarray())
+        assert np.array_equal(np.array([[0,0,0]]), x0.jac[1].toarray())
+        assert np.array_equal(np.array([[0]]), x0.jac[2].toarray())
 
+        x0 = x[(2,1),:]
+        assert np.array_equal(np.array([[2,1]]).T, x0.val)
+        assert np.array_equal(np.array([[0,0,1,0],
+                                        [0,1,0,0]]), x0.jac[0].toarray())
+        assert np.array_equal(np.array([[0,0,0],
+                                        [0,0,0]]), x0.jac[1].toarray())
+        assert np.array_equal(np.array([[0],[0]]), x0.jac[2].toarray())
+
+    def test_setitem(self):
+        x, y = initVariablesADI(np.array([[0,1]]).T, np.array([[5]]).T)
+        x[0] = x[1]
+        assert x.val[0,0] == x.val[1,0]
+        assert np.array_equal(x[0].jac[0].toarray(), x[1].jac[0].toarray())
+        x[0] = 99
+        assert x.val[0,0] == 99
+        assert np.array_equal(x.jac[0].toarray(), np.array([[0,0],[0,1]]))
 
     def test_dot(self):
-        x, y = initVariablesADI(np.array([[1,2]]).T, np.array([[4]]).T)
-        y.dot(5)
         # TODO complete test
+        pass
