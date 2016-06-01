@@ -267,11 +267,15 @@ class ADI(object):
     See also:
         initVariablesADI
     """
+    # Requires __numpy_ufunc__ for syntactical sugar. Hopefully will be added to NumPy 1.12...
+    # https://github.com/numpy/numpy/issues/7519
+
+    __array_priority__ = 10000
+    ndim = 2
 
     def __init__(self, val, jac):
         self.val = val
         self.jac = jac
-        self.__array_priority__ = 100
         if not isinstance(self.jac, list):
             self.jac = [self.jac,]
 
@@ -282,28 +286,36 @@ class ADI(object):
     def copy(self):
         return copy.deepcopy(self)
 
-    def __len__(self):
-        return len(self.val)
+    #def __len__(self):
+        #raise NotImplementedError("Use shape[0]. See http://stackoverflow.com/questions/37529715/")
 
     @property
     def shape(self):
         return self.val.shape
 
-    @property
-    def ndim(self):
-        return self.val.ndim
-
     def __ge__(u, v):
-        return u.val >= v.val
+        try:
+            return u.val >= v.val
+        except AttributeError:
+            return u.val >= v
 
     def __gt__(u, v):
-        return u.val > v.val
+        try:
+            return u.val > v.val
+        except AttributeError:
+            return u.val > v
 
     def __le__(u, v):
-        return u.val <= v.val
+        try:
+            return u.val <= v.val
+        except AttributeError:
+            return u.val <= v
 
     def __lt__(u, v):
-        return u.val < v.val
+        try:
+            return u.val < v.val
+        except AttributeError:
+            return u.val < v
 
     def __pos__(u): # +u
         return u.copy()
@@ -367,7 +379,7 @@ class ADI(object):
         elif np.isscalar(v):
             return ADI(u.val*v, [v*ju for ju in u.jac])
         elif isinstance(v, np.ndarray):
-            if len(u) == 1:
+            if len(u.val) == 1:
                 val = u.val * v
                 jac = [sps.diags(v.flat,0)*sps.bmat([[j]]*len(v)) for j in u.jac]
                 return ADI(val, jac)
@@ -383,15 +395,19 @@ class ADI(object):
 
     def __rmul__(v, u):
         # u * v = v * u
+        print("RMUL")
         return v.__mul__(u)
 
     def dot(u, A): # u x A
+        return 0
         """Matrix multiplication, u x A."""
         if not isinstance(A, ADI):
             A = np.atleast_2d(A)
-        if len(u) == 1 and A.shape[0] == 1 and A.shape[1] == 1:
-            return u*A
-        raise ValueError("dot(u_ad,v) only valid for 1x1 parameters.")
+        if len(u.val) == 1 and A.shape[0] == 1 and A.shape[1] == 1:
+            val = u*A[0,0]
+            jac = [j*A[0,0] for j in u.jac]
+            return ADI(val, jac)
+        raise ValueError("u_ad.dot(v) only valid for v of size 1x1.")
 
     def __pow__(u, v):
         return u._pow(u, v)
@@ -407,11 +423,12 @@ class ADI(object):
             uvJac = [sps.diags(tmp.flat, 0)*ju for ju in u.jac]
             return ADI(u.val**v, uvJac)
         elif not isinstance(u, ADI): # u is a scalar, v is AD
+            u = np.atleast_2d(u)
             tmp = u**v.val*np.log(u)
             uvJac = [sps.diags(tmp.flat, 0)*jv for jv in v.jac]
             return ADI(u**v.val, uvJac)
         else: # u and v are ADI objects of same length
-            if len(u) != len(v):
+            if  len(u.val) != len(v.val):
                 raise ValueError("Must be same length")
             # d(u^v)/dx = diag(u^v o (v / u))*
             # + diag(u^v o log(u))*J
@@ -475,16 +492,87 @@ class ADI(object):
             for i in range(len(u.jac)):
                 u.jac[i][s] = 0
 
+    def max(u):
+        """Return the maximum element in the array."""
+        i = np.argmax(u.val)
+        return ADI(np.atleast_2d(u.val[i,:]), [j[i,:] for j in u.jac])
 
-    # max
+    def min(u):
+        """Return the minimum element in the array."""
+        i = np.argmin(u.val)
+        return ADI(np.atleast_2d(u.val[i,:]), [j[i,:] for j in u.jac])
 
-    # min
+    def sum(u):
+        """Return the sum of the array elements."""
+        val = u.val.sum(keepdims=True)
+        jac = [sps.csr_matrix(j.sum(axis=0)) for j in u.jac]
+        return ADI(val, jac)
 
-    # sum
+    def sin(u):
+        """Return element-wise sine of array."""
+        val = np.cos(u.val)
+        cosval = np.cos(u.val)
+        jac = [sps.diags(cosval.flat, 0)*j for j in u.jac]
+        return ADI(val, jac)
 
-    # cumsum
+    def cos(u):
+        """Return element-wise cosine of array."""
+        val = np.cos(u.val)
+        msinval = -np.sin(u.val)
+        jac = [sps.diags(msinval.flat, 0)*j for j in u.jac]
+        return ADI(val, jac)
 
+    def exp(u):
+        val = np.exp(u.val)
+        jac = [sps.diags(val.flat, 0)*j for j in u.jac]
+        return ADI(val, jac)
 
+    def log(u):
+        val = np.log(u.val)
+        m = sps.diags((1/u.val).flat, 0)
+        jac = [m*j for j in u.jac]
+        return ADI(val, jac)
+
+    def sign(u):
+        return np.sign(u.val)
+
+    def __numpy_ufunc__(self, func, method, pos, inputs, **kwargs):
+        """Placeholder method for future NumPy versions."""
+        print("NumPy has finally added __numpy_ufunc__ support, but PRST has not added support yet.")
+        return NotImplemented
+
+# NumPy binary ufunc wrappers
+def dot(u, v):
+    """Matrix multiplication."""
+    if isinstance(u, ADI) and isinstance(v, ADI):
+        # u_ad, v_ad
+        assert u.val.shape[0] == v.val.shape[0] == 1, "dot(ad,ad) only valid for 1x1 arguments"
+        return u * v
+    elif isinstance(u, ADI) and not isinstance(v, ADI):
+        # u_ad, v
+        v = np.atleast_2d(v)
+        assert v.shape[0] == 1, "dot(ad,vec) only valid for 1x1 vec."
+        return u*v
+    elif not isinstance(u, ADI) and isinstance(v, ADI):
+        # u, v_ad
+        u = np.atleast_2d(u)
+        u_sp = sps.csr_matrix(u)
+        return ADI(np.dot(u, v.val), [u_sp*j for j in v.jac])
+    else:
+        # u, v
+        return np.dot(u, v)
+
+# Numpy unary ufunc wrappers
+def sign(u):
+    if isinstance(u, ADI):
+        return np.sign(u.val)
+    else:
+        return np.sign(u)
+
+# Register ufunc wrappers so they can be easily imported.
+npad = Struct()
+npad.dot = dot
+npad.sign = sign
 
 def initVariablesADI(*variables):
     # Convert all inputs to arrays
