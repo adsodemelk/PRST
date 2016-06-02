@@ -255,14 +255,30 @@ class ADI(object):
     Arguments:
         value(np.ndarray):
             The numerical value of the object. Must be a NumPy column array.
-            Not compatible with matrices.
+            Not compatible with matrices (neither np.matrix nor
+            scipy.sparse.spmatrix).
 
         jacobian(list[scipy.sparse.csr_matrix]):
-            The Jacobian of the object. Split into parts to improve performance.
+            The Jacobian of the object. Split into parts to improve
+            performance.
 
     Comment:
         This class is typically instantiated for a set of variables using
         initVariablesADI, not by itself.
+
+        Many methods found in `np.ndarray` are also implemented by ADI. Example:
+
+            x, = initVariablesADI(np.array([[2, 3, 4]]).T)
+            y = x.log()
+            z = x.sum()
+
+        Using "np." methods is not supported yet, e.g., `np.dot(A, x)` where x
+        is an ADI object will not work as expected, and is not recommended. A
+        compatability layer, `prst.utils.npad` is provided. `npad.dot(A, x)`
+        will work correctly for any number of AD arguments, and uses `np.dot(A,
+        x)` if neither arguments are AD objects. Future versions of NumPy
+        (>0.12) will most likely deprecate `npad` with the __numpy_ufunc__
+        functionality.
 
     See also:
         initVariablesADI
@@ -376,22 +392,18 @@ class ADI(object):
                 ujac = [sps.bmat([[j]]*len(v.val)) for j in u.jac]
                 return ADI(uval, ujac).__mul__(v)
             raise ValueError("Dimension mismatch")
-        elif np.isscalar(v):
-            return ADI(u.val*v, [v*ju for ju in u.jac])
-        elif isinstance(v, np.ndarray):
+        else:
+            v = np.atleast_2d(v)
             if len(u.val) == 1:
                 val = u.val * v
                 jac = [sps.diags(v.flat,0)*sps.bmat([[j]]*len(v)) for j in u.jac]
                 return ADI(val, jac)
             if len(v) == 1:
-                return ADI(u.val*v, [v*ju for ju in u.jac])
+                return ADI(u.val*v, [v.flat[0]*ju for ju in u.jac])
             if len(u.val) == len(v):
-                v = np.atleast_2d(v)
                 vJu = [sps.diags(v.flat, 0)*ju for ju in u.jac] # MATRIX multiplication
                 return ADI(u.val*v, vJu)
             raise ValueError("Dimension mismatch")
-        else:
-            raise ValueError("u*v: v must be scalar or ndarray.")
 
     def __rmul__(v, u):
         # u * v = v * u
@@ -399,15 +411,7 @@ class ADI(object):
         return v.__mul__(u)
 
     def dot(u, A): # u x A
-        return 0
-        """Matrix multiplication, u x A."""
-        if not isinstance(A, ADI):
-            A = np.atleast_2d(A)
-        if len(u.val) == 1 and A.shape[0] == 1 and A.shape[1] == 1:
-            val = u*A[0,0]
-            jac = [j*A[0,0] for j in u.jac]
-            return ADI(val, jac)
-        raise ValueError("u_ad.dot(v) only valid for v of size 1x1.")
+        return _dot(u, A)
 
     def __pow__(u, v):
         return u._pow(u, v)
@@ -444,13 +448,13 @@ class ADI(object):
         return v._pow(u, v)
 
     def __div__(u, v):
-        return u.__truediv__(v)
+        raise DeprecationWarning("Add 'from __future__ import division'.")
 
     def __truediv__(u, v):
         return u * v**(-1.0)
 
     def __rdiv__(v, u):
-        return v.__rtruediv__(u)
+        raise DeprecationWarning("Add 'from __future__ import division'.")
 
     def __rtruediv__(v, u):
         return u * v**(-1.0)
@@ -510,7 +514,7 @@ class ADI(object):
 
     def sin(u):
         """Return element-wise sine of array."""
-        val = np.cos(u.val)
+        val = np.sin(u.val)
         cosval = np.cos(u.val)
         jac = [sps.diags(cosval.flat, 0)*j for j in u.jac]
         return ADI(val, jac)
@@ -536,13 +540,19 @@ class ADI(object):
     def sign(u):
         return np.sign(u.val)
 
+    def abs(u):
+        val = np.abs(u.val)
+        sgn = np.sign(u.val)
+        jac = [sps.diags(sgn.flat, 0)*j for j in u.jac]
+        return ADI(val, jac)
+
     def __numpy_ufunc__(self, func, method, pos, inputs, **kwargs):
         """Placeholder method for future NumPy versions."""
-        print("NumPy has finally added __numpy_ufunc__ support, but PRST has not added support yet.")
-        return NotImplemented
+        raise NotImplementedError("NumPy has finally added __numpy_ufunc__ support, but "
+                                   "PRST has not added support yet.")
 
 # NumPy binary ufunc wrappers
-def dot(u, v):
+def _dot(u, v):
     """Matrix multiplication."""
     if isinstance(u, ADI) and isinstance(v, ADI):
         # u_ad, v_ad
@@ -552,6 +562,7 @@ def dot(u, v):
         # u_ad, v
         v = np.atleast_2d(v)
         assert v.shape[0] == 1, "dot(ad,vec) only valid for 1x1 vec."
+        print("TODO _dot func")
         return u*v
     elif not isinstance(u, ADI) and isinstance(v, ADI):
         # u, v_ad
@@ -562,19 +573,65 @@ def dot(u, v):
         # u, v
         return np.dot(u, v)
 
+def _tile(A, reps):
+    if isinstance(A, ADI):
+        if len(reps) != 2 or reps[1] != 1:
+            raise TypeError("AD vectors can only be tiled vertically.")
+        val = np.tile(A.val, reps)
+        jac = [sps.bmat([[j]]*reps[0]) for j in A.jac]
+        return ADI(val, jac)
+    else:
+        return np.tile(A, reps)
+
 # Numpy unary ufunc wrappers
-def sign(u):
+# The unary wrappers are all following the same formula, and can possibly be
+# removed entirely by making `npad` more magic with __getattr__.
+def _sign(u):
     if isinstance(u, ADI):
-        return np.sign(u.val)
+        return u.sign()
     else:
         return np.sign(u)
 
+def _abs(u):
+    """np.abs for AD array."""
+    if isinstance(u, ADI):
+        return u.abs()
+    else:
+        return np.abs(u)
+
+def _vstack(tup):
+    """np.vstack for AD array."""
+    vals = np.vstack((u.val for u in tup))
+    jacs = []
+    num_jacs = len(tup[0].jac)
+    for j in range(num_jacs):
+        jacs.append(sps.bmat([[u.jac[j]] for u in tup]))
+    return ADI(vals, jacs)
+
+def _concatenate(tup, axis):
+    """np.concatenate for AD array."""
+    if axis != 0:
+        raise TypeError("ADI objects can only be concatenated vertically.")
+    return _vstack(tup)
+
 # Register ufunc wrappers so they can be easily imported.
 npad = Struct()
-npad.dot = dot
-npad.sign = sign
+# n-ary
+npad.vstack = _vstack
+npad.concatenate = _concatenate
+# binary
+npad.dot = _dot
+npad.tile = _tile
+# unary
+npad.sign = _sign
+npad.abs = _abs
 
 def initVariablesADI(*variables):
+    """
+    Returns AD (automatic differentiation) variables.
+
+    See `help(prst.utils.ADI)` for documentation.
+    """
     # Convert all inputs to arrays
     variables = map(np.atleast_2d, variables)
     numvals = np.array([len(variable) for variable in variables])
@@ -594,22 +651,3 @@ def initVariablesADI(*variables):
 
         ret[i] = ADI(variables[i], jac)
     return ret
-
-
-def _lMultDiag(d, J1):
-    """TODO"""
-    print("d", d)
-    print("J1", J1)
-    n = len(d)
-    if np.any(d):
-        ix = np.arange(n)
-        #csr_matrix((data, (row_ind, col_ind)), [shape=(M, N)])
-        D = csr_matrix((d.ravel(), (ix, ix)), shape=(n,n))
-    else:
-        D = 0
-
-    # J1 is a list of sparse blocks comprising the Jacobian
-    J = [None] * len(J1)
-    for k in range(len(J)):
-        J[k] = D*J1[k]
-    return J

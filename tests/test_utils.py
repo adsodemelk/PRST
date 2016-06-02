@@ -7,7 +7,7 @@ import pytest
 import numpy as np
 import scipy.sparse as sps
 
-from prst.utils import rlencode, rldecode, npad
+from prst.utils import rlencode, rldecode, recursive_diff, npad
 
 from prst.utils import mcolon, initVariablesADI, ADI
 from prst.utils.units import *
@@ -87,6 +87,11 @@ class Test_mcolon:
         ans = np.array([1,3,5, 2,5,8,11])
         assert np.array_equal(mcolon(lo, hi, s), ans)
 
+# Only to satisfy pytest-cov. Not actually testing anything.
+class Test_recursive_diff:
+    recursive_diff({'a':5}, {'b': 6})
+    recursive_diff(np.array([0.00000001]), np.array([0.0000]))
+
 class Test_ADI:
     def test_init(self):
         x, y = initVariablesADI(np.array([[1,2,3]]).T, np.array([[4,5]]).T)
@@ -98,6 +103,15 @@ class Test_ADI:
         assert (x.jac[1] - sps.csr_matrix((3,2))).nnz == 0
         assert (y.jac[0] - sps.csr_matrix((2,3))).nnz == 0
         assert (y.jac[1] - sps.eye(2)).nnz == 0
+
+    def test_jacnotlist(self):
+        x = ADI(np.array([[1,2,3]]).T, sps.eye(3))
+        assert (x.jac[0] - sps.eye(3)).nnz == 0
+
+    def test_repr(self):
+        x, y = initVariablesADI(np.array([[1,2,3]]).T, np.array([[4,5]]).T)
+        y.__repr__()
+
 
     def test_copy(self):
         # Simply assigning returns a reference
@@ -127,12 +141,18 @@ class Test_ADI:
         assert x.ndim == 2
 
     def test_ge_gt_le_lt(self):
-        x_val = np.array([[1,2,3,2,4]]).T
-        y_val = np.array([[4,3,2,2,1]]).T
+        x_val = np.array([[1,2,3,2,4,6,7]]).T
+        y_val = np.array([[4,3,2,2,8,9,10]]).T
         x, y = initVariablesADI(x_val, y_val)
         assert np.array_equal( x_val >= y_val, x >= y )
+        assert np.array_equal( x_val >= 5, x >= 5 )
+
         assert np.array_equal( x_val > y_val, x > y )
+        assert np.array_equal( x_val > 5, x > 5 )
+
         assert np.array_equal( x_val <= y_val, x <= y )
+        assert np.array_equal( x_val <= 5, x <= 5 )
+
         assert np.array_equal( x_val < y_val, x < y )
         assert np.array_equal( x_val < 5, x < 5 )
 
@@ -231,6 +251,11 @@ class Test_ADI:
         assert np.array_equal(np.array([[456,0],[0,5520]]), w.jac[0].toarray())
         assert np.array_equal(np.array([[97,0],[0,1804]]), w.jac[1].toarray())
 
+    def test_mul_ad_ad_mismatch(self):
+        a, b = initVariablesADI(np.array([[1,2]]).T, np.array([[1,2,3]]).T)
+        with pytest.raises(ValueError):
+            a*b
+
     def test_mul_ad_scalar(self):
         x, y = initVariablesADI(np.array([[1,2,3]]).T, np.array([[4,5,6]]).T)
         w = x*x*y*3 + x*y*y*5
@@ -244,6 +269,13 @@ class Test_ADI:
         assert np.array_equal(np.array([[92, 310, 702]]).T, w.val)
         assert np.array_equal(np.array([[104,0,0],[0,185,0], [0,0,288]]), w.jac[0].toarray())
         assert np.array_equal(np.array([[43,0,0],[0,112,0], [0,0,207]]), w.jac[1].toarray())
+        z = np.array([[2]])
+        f = x*z
+        assert np.array_equal(np.array([[2, 4, 6]]).T, f.val)
+        assert np.array_equal(np.array([[2,0,0],[0,2,0], [0,0,2]]), f.jac[0].toarray())
+        assert np.array_equal(np.array([[0,0,0],[0,0,0], [0,0,0]]), f.jac[1].toarray())
+        with pytest.raises(ValueError):
+            x*np.array([[1,2]]).T
 
     def test_mul_ADI3_ADI1(self):
         x, y = initVariablesADI(np.array([[1,2]]).T, np.array([[4]]).T)
@@ -308,7 +340,7 @@ class Test_ADI:
         with pytest.raises(ValueError):
             x.val**y
 
-    def test_div(self):
+    def test_truediv(self):
         x, y = initVariablesADI(np.array([[1,2,3]]).T, np.array([[2,3,4]]).T)
         u = x+2*y
 
@@ -346,6 +378,15 @@ class Test_ADI:
         assert np.array_equal(np.array([[0,0],[0,0]]), s.jac[0].toarray())
         assert np.array_equal(np.array([[0.25],[0.5]]), s.jac[1].toarray())
 
+    def test_div(self):
+        u, = initVariablesADI(np.array([[1]]))
+        # uses "classic" division even if future division is enabled.
+        import operator
+        with pytest.raises(DeprecationWarning):
+            operator.div(u, 5)
+        with pytest.raises(DeprecationWarning):
+            operator.div(5, u)
+
     def test_getitem(self):
         x, y, z = initVariablesADI(np.array([[0,1,2,3]]).T, np.array([[0,1,2]]).T, np.array([[1]]))
         x0 = x[0]
@@ -361,6 +402,8 @@ class Test_ADI:
         assert np.array_equal(np.array([[0,0,0],
                                         [0,0,0]]), x0.jac[1].toarray())
         assert np.array_equal(np.array([[0],[0]]), x0.jac[2].toarray())
+        with pytest.raises(ValueError):
+            y[np.array([[1, 1], [2,2]])]
 
     def test_setitem(self):
         x, y = initVariablesADI(np.array([[0,1]]).T, np.array([[5]]).T)
@@ -379,6 +422,14 @@ class Test_ADI:
         assert np.array_equal(xmax.jac[0].toarray(), np.array([[0,1]]))
         assert np.array_equal(xmax.jac[1].toarray(), np.array([[0]]))
 
+    def test_min(self):
+        x, y = initVariablesADI(np.array([[1,2]]).T, np.array([[5]]).T)
+        xmin = x.min()
+        assert xmin.val[0,0] == 1
+        assert xmin.ndim == 2
+        assert np.array_equal(xmin.jac[0].toarray(), np.array([[1,0]]))
+        assert np.array_equal(xmin.jac[1].toarray(), np.array([[0]]))
+
     def test_sum(self):
         x, y = initVariablesADI(np.array([[0,1]]).T, np.array([[5]]).T)
         z = x+y # [5;6]
@@ -389,6 +440,15 @@ class Test_ADI:
         assert sumz.val[0,0] == 11
         assert np.array_equal(sumz.jac[0].toarray(), np.array([[1,1]]))
         assert np.array_equal(sumz.jac[1].toarray(), np.array([[2]]))
+
+    def test_sin(self):
+        x, y = initVariablesADI(np.array([[0,np.pi/2]]).T, np.array([[5]]).T)
+        sinx = x.sin()
+        assert isinstance(sinx, ADI)
+        assert abs(sinx.val[0,0]) < 0.0001
+        assert abs(sinx.val[1,0]-1) < 0.0001
+        assert abs(sinx.jac[0][0,0] - 1) < 0.0001
+        assert abs(sinx.jac[0][1,1]) < 0.0001
 
     def test_cos(self):
         x, y = initVariablesADI(np.array([[0,np.pi/2]]).T, np.array([[5]]).T)
@@ -439,6 +499,15 @@ class Test_ADI:
         assert isinstance(w, np.ndarray)
         assert np.array_equal(w, np.array([[8, 12], [4, 6]]))
 
+    def test_dot_chain(self):
+        x, y = initVariablesADI(np.array([[4,2]]).T, np.array([[2,3]]).T)
+        z = x.dot(9)
+        assert isinstance(z, ADI)
+        assert np.array_equal(z.val, np.array([[36, 18]]).T)
+        z = x.dot(3).dot(3)
+        assert isinstance(z, ADI)
+        assert np.array_equal(z.val, np.array([[36, 18]]).T)
+
     def test_exp(self):
         x, y = initVariablesADI(np.array([[4,2]]).T, np.array([[2,3]]).T)
         z = x.exp()
@@ -460,17 +529,53 @@ class Test_ADI:
     def test_sign(self):
         x, y = initVariablesADI(np.array([[4,2]]).T, np.array([[2,3,-5]]).T)
         ysign = y.sign()
-        print(ysign)
         assert np.array_equal(ysign, np.array([[1,1,-1]]).T)
         wsign = npad.sign(y)
-        print(wsign)
         assert np.array_equal(wsign, np.array([[1,1,-1]]).T)
 
+    def test_abs(self):
+        x, y = initVariablesADI(np.array([[5, -2]]).T, np.array([[3]]).T)
+        z1 = (x*y).abs()
+        assert np.array_equal(z1.val, np.array([[15, 6]]).T)
+        assert (z1.jac[0] - sps.diags([3, -3], 0)).nnz == 0
+        assert np.array_equal(z1.jac[1].toarray(), np.array([[5], [2]]))
+        z2 = npad.abs(x*y)
+        assert np.array_equal(z2.val, np.array([[15, 6]]).T)
+        assert (z2.jac[0] - sps.diags([3, -3], 0)).nnz == 0
+        assert np.array_equal(z2.jac[1].toarray(), np.array([[5], [2]]))
 
+    def test_tile(self):
+        x, y = initVariablesADI(np.array([[5, -2]]).T, np.array([[3]]).T)
+        yyy = npad.tile(y, (3,1))
+        assert np.array_equal(yyy.val, np.array([[3,3,3]]).T)
+        assert np.array_equal(yyy.jac[1].toarray(), np.array([[1,1,1]]).T)
+        with pytest.raises(TypeError):
+            npad.tile(y, 3)
+        with pytest.raises(TypeError):
+            npad.tile(y, (3,2))
 
+    def test_vstack(self):
+        x, y = initVariablesADI(np.array([[5, -2]]).T, np.array([[3]]).T)
+        xy = npad.vstack((x,y))
+        assert np.array_equal(xy.val, np.array([[5, -2, 3]]).T)
+        assert np.array_equal(xy.jac[0].toarray(), np.array([[1,0], [0,1], [0,0]]))
+        assert np.array_equal(xy.jac[1].toarray(), np.array([[0],[0],[1]]))
 
+    def test_concatenate(self):
+        x, y = initVariablesADI(np.array([[5, -2]]).T, np.array([[3]]).T)
+        xy = npad.concatenate((x,y), axis=0)
+        assert np.array_equal(xy.val, np.array([[5, -2, 3]]).T)
+        with pytest.raises(TypeError):
+            npad.concatenate((x,y), axis=1)
 
+    def test_numpy_ufunc(self):
+        x, = initVariablesADI(np.array([[5]]))
+        with pytest.raises(NotImplementedError):
+            print(x.__numpy_ufunc__("func", "method", "pos", "inputs"))
 
-
-
-
+class Test_npad_non_ad:
+    def test_vec_vec(self):
+        a, b = np.array([[1,-2]]), np.array([[3,4]])
+        assert np.array_equal(npad.tile(a, (3,2)), np.tile(a, (3,2)))
+        assert np.array_equal(npad.sign(a), np.sign(a))
+        assert np.array_equal(npad.abs(a), np.abs(a))
