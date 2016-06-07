@@ -112,6 +112,9 @@ class Test_ADI:
         x, y = initVariablesADI(np.array([[1,2,3]]).T, np.array([[4,5]]).T)
         y.__repr__()
 
+    def test_pprint(self):
+        x, y = initVariablesADI(np.array([[1,2,3]]).T, np.array([[4,5]]).T)
+        x.pprint()
 
     def test_copy(self):
         # Simply assigning returns a reference
@@ -405,6 +408,15 @@ class Test_ADI:
         with pytest.raises(ValueError):
             y[np.array([[1, 1], [2,2]])]
 
+    def test_getitem_only_x(self):
+        x, = initVariablesADI(np.array([[4, 5]]).T)
+        assert len(x.jac) == 1
+        assert x.jac[0].shape == (2,2)
+        assert np.array_equal(x.jac[0].toarray(), np.eye(2))
+
+        x0 = x[(1,0),:]
+        assert x0.val[0,0] == 5 and x0.val[1,0] == 4
+ 
     def test_setitem(self):
         x, y = initVariablesADI(np.array([[0,1]]).T, np.array([[5]]).T)
         x[0] = x[1]
@@ -413,6 +425,22 @@ class Test_ADI:
         x[0] = 99
         assert x.val[0,0] == 99
         assert np.array_equal(x.jac[0].toarray(), np.array([[0,0],[0,1]]))
+
+    def test_setitem_tuple(self):
+        x, = initVariablesADI(np.array([[5,4]]).T)
+        # A: should work identically to B
+        y = x.copy()
+        y[0] = x[1]
+        assert y.val[0] == 4 and y.val[1] == 4
+        assert np.array_equal(y.jac[0].toarray(), np.array([[0,1],[0,1]]))
+        # B: should work identically to A
+        y = x.copy()
+        assert isinstance(y, ADI)
+        y[0,0] = x[1,0]
+
+    def test_setitem_reverse(self):
+        x, = initVariablesADI(np.array([[5,4]]).T)
+        x[:,0] = x[::-1,0]
 
     def test_max(self):
         x, y = initVariablesADI(np.array([[0,1]]).T, np.array([[5]]).T)

@@ -299,6 +299,43 @@ class ADI(object):
         jacstring = str([block.shape for block in self.jac])
         return "(val: {0}.T, jac block sizes: {1})".format(self.val.T, jacstring)
 
+    def pprint(self, name=None):
+        """
+        Pretty-print full matrices with limited decimals.
+
+        Example:
+
+            import numpy as np
+            from prst.utils import initVariablesADI
+
+            x0 = np.array([[1,2,3,2,3]]).T
+            x, = initVariablesADI(x0)
+            y = x**2
+            y.pprint()
+
+        Output:
+
+            ADI properties
+                val: [[1 4 9 4 9]].T
+
+                jac[0]  [[ 2.  0.  0.  0.  0.]
+                         [ 0.  4.  0.  0.  0.]
+                         [ 0.  0.  6.  0.  0.]
+                         [ 0.  0.  0.  4.  0.]
+                         [ 0.  0.  0.  0.  6.]]
+        """
+        namestr = ""
+        if name:
+            namestr = name + " "
+        lines = [
+            namestr + "ADI properties",
+            "\tval: " + str(self.val.T) + ".T",
+        ]
+        for i, j in enumerate(self.jac):
+            lines.append("\n\tjac[" + str(i) + "]" + "\t" + str(j.toarray()).replace("\n", "\n\t\t"))
+        lines.append("")
+        print("\n".join(lines))
+
     def copy(self):
         return copy.deepcopy(self)
 
@@ -407,7 +444,6 @@ class ADI(object):
 
     def __rmul__(v, u):
         # u * v = v * u
-        print("RMUL")
         return v.__mul__(u)
 
     def dot(u, A): # u x A
@@ -475,9 +511,15 @@ class ADI(object):
             x[::-1]
         """
         val = np.atleast_2d(u.val[s])
-        if val.shape[1] != 1:
+        if val.shape[0] != 1 and val.shape[1] != 1:
             raise ValueError("Slice type not supported")
-        jac = [j[s] for j in u.jac]
+        if val.shape[1] != 1:
+            val = val.T
+        try:
+            s = s[0]
+        except TypeError:
+            pass
+        jac = [j[s,:] for j in u.jac]
         return ADI(val, jac)
 
     def __setitem__(u, s, v):
@@ -488,11 +530,19 @@ class ADI(object):
         If the right side is ADI, the corresponding Jacobian rows are overwritten.
         """
         if isinstance(v, ADI):
-            u.val[s] = v.val
+            u.val[s] = v.val[:,0]
+            try:
+                s = s[0]
+            except TypeError:
+                pass
             for i in range(len(u.jac)):
                 u.jac[i][s] = v.jac[i]
         else:
             u.val[s] = v
+            try:
+                s = s[0]
+            except TypeError:
+                pass
             for i in range(len(u.jac)):
                 u.jac[i][s] = 0
 
@@ -562,7 +612,6 @@ def _dot(u, v):
         # u_ad, v
         v = np.atleast_2d(v)
         assert v.shape[0] == 1, "dot(ad,vec) only valid for 1x1 vec."
-        print("TODO _dot func")
         return u*v
     elif not isinstance(u, ADI) and isinstance(v, ADI):
         # u, v_ad
@@ -598,6 +647,15 @@ def _abs(u):
         return u.abs()
     else:
         return np.abs(u)
+
+def _exp(u):
+    """np.exp for AD array."""
+    if isinstance(u, ADI):
+        return u.exp()
+    else:
+        return np.abs(u)
+
+# NumPy n-ary functions
 
 def _vstack(tup):
     """np.vstack for AD array."""
