@@ -7,7 +7,7 @@ import pytest
 import numpy as np
 import scipy.sparse as sps
 
-from prst.utils import rlencode, rldecode, recursive_diff, npad
+from prst.utils import rlencode, rldecode, recursive_diff, npad, _spdiag
 
 from prst.utils import mcolon, initVariablesADI, ADI
 from prst.utils.units import *
@@ -103,6 +103,16 @@ class Test_ADI:
         assert (x.jac[1] - sps.csr_matrix((3,2))).nnz == 0
         assert (y.jac[0] - sps.csr_matrix((2,3))).nnz == 0
         assert (y.jac[1] - sps.eye(2)).nnz == 0
+
+    def test_init_row_vector(self):
+        with pytest.raises(ValueError):
+            x, = initVariablesADI(np.array([[20, 10]]))
+
+    def test_init_empty_vector(self):
+        x, = initVariablesADI(np.array([[]]))
+        assert x.shape[0] == 0
+        assert x.shape[1] == 1
+        assert x.jac[0].shape == (0,0)
 
     def test_jacnotlist(self):
         x = ADI(np.array([[1,2,3]]).T, sps.eye(3))
@@ -343,6 +353,14 @@ class Test_ADI:
         with pytest.raises(ValueError):
             x.val**y
 
+    def test_0x1_bug(self):
+        # 0x1 column vector
+        x, = initVariablesADI(np.array([[]]))
+        y = x**2 # 0x1 column vector
+        assert y.shape == (0,1)
+        assert np.array_equal(np.zeros((0,1)), y.val)
+        assert y.jac[0].shape == (1,0)
+
     def test_truediv(self):
         x, y = initVariablesADI(np.array([[1,2,3]]).T, np.array([[2,3,4]]).T)
         u = x+2*y
@@ -416,7 +434,7 @@ class Test_ADI:
 
         x0 = x[(1,0),:]
         assert x0.val[0,0] == 5 and x0.val[1,0] == 4
- 
+
     def test_setitem(self):
         x, y = initVariablesADI(np.array([[0,1]]).T, np.array([[5]]).T)
         x[0] = x[1]

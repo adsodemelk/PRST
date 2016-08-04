@@ -378,16 +378,16 @@ class ADI(object):
 
     def __add__(u, v): # u + v
         if isinstance(v, ADI):
-            if len(u.val) == len(v.val):
+            if u.val.shape[0] == v.val.shape[0]:
                 return ADI(u.val + v.val, [ju+jv for (ju,jv) in zip(u.jac, v.jac)])
-            if len(v.val) == 1:
+            if v.val.shape[0] == 1:
                 # Tile v.jac to same length as u.jac since sparse matrices
                 # don't broadcast properly.
                 # https://github.com/scipy/scipy/issues/2128
                 vjac = [sps.bmat([[j]]*len(u.val)) for j in v.jac]
                 retjac = [ju+jv for (ju,jv) in zip(u.jac, vjac)]
                 return ADI(u.val+v.val, retjac)
-            if len(u.val) == 1:
+            if u.val.shape[0] == 1:
                 # Vice versa, this time tile u instead
                 ujac = [sps.bmat([[j]]*len(v.val)) for j in u.jac]
                 retjac = [ju+jv for (ju,jv) in zip(ujac, v.jac)]
@@ -460,7 +460,7 @@ class ADI(object):
         if not isinstance(v, ADI): # u is AD, v is a scalar or vector
             v = np.atleast_2d(v)
             tmp = v*u.val**(v-1)
-            uvJac = [sps.diags(tmp.flat, 0)*ju for ju in u.jac]
+            uvJac = [_spdiag(tmp)*ju for ju in u.jac]
             return ADI(u.val**v, uvJac)
         elif not isinstance(u, ADI): # u is a scalar, v is AD
             u = np.atleast_2d(u)
@@ -690,10 +690,17 @@ def initVariablesADI(*variables):
 
     See `help(prst.utils.ADI)` for documentation.
     """
-    # Convert all inputs to arrays
-    variables = map(np.atleast_2d, variables)
-    numvals = np.array([len(variable) for variable in variables])
-    n = len(variables)
+    # Convert all inputs to column arrays
+    vals = list(variables)
+    for i in range(len(vals)):
+        vals[i] = np.atleast_2d(vals[i])
+        if vals[i].shape[1] == 0:
+            vals[i] = vals[i].reshape(-1,1)
+        elif vals[i].shape[1] != 1:
+            raise ValueError("AD variables must be column vectors.")
+
+    numvals = np.array([len(val) for val in vals])
+    n = len(vals)
 
     ret = [None]*n
     for i in range(n):
@@ -707,5 +714,11 @@ def initVariablesADI(*variables):
         # Set Jacobian of current variable wrt itself to the identity matrix.
         jac[i] = scipy.sparse.identity(nrows, format="csr")
 
-        ret[i] = ADI(variables[i], jac)
+        ret[i] = ADI(vals[i], jac)
     return ret
+
+def _spdiag(val_column):
+    """Improved version of scipy.sparse.diags."""
+    if val_column.shape[0] == 0:
+        return sps.csr_matrix((1,0))
+    return sps.diags(val_column.flat, 0, format="csr")
