@@ -8,7 +8,7 @@ import numpy as np
 import prst
 from prst import gridprocessing
 from prst.gridprocessing import cartGrid
-from prst.params.rock import Rock, permTensor
+from prst.params.rock import Rock, permTensor, poreVolume
 from prst.params.wells_and_bc import BoundaryCondition
 
 class TestGravity:
@@ -42,6 +42,13 @@ class TestRock:
         G = gridprocessing.cartGrid([3, 3, 3])
         with pytest.raises(TypeError):
             rock = Rock(G, perm=0.1)
+
+    def test_poreVolume_no_ntg(self):
+        G = gridprocessing.cartGrid([3, 3, 1], [9, 9, 3])
+        rock = Rock(G, perm=0.1, poro=0.5)
+        gridprocessing.computeGeometry(G)
+        pv_r = poreVolume(G, rock)
+        assert np.array_equal(pv_r, 13.5*np.array([[1,1,1,1,1,1,1,1,1]]).T)
 
 class Test_permTensor:
     def setup_method(self, method):

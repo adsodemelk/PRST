@@ -98,9 +98,40 @@ class Rock:
     def __str__(self):
         return str(self.__dict__)
 
-def makeRock():
+def makeRock(*args, **kwargs):
     """Use prst.params.rock.Rock"""
     raise NotImplementedError("Use prst.params.rock.Rock")
+
+def poreVolume(G, rock):
+    """
+    Compute pore volumes of individual cells in grid.
+
+    Synopsis:
+        pv = poreVolume(G, rock)
+
+    Arguments:
+        G (Grid):
+            Grid data structure.  Must have attribute `G.cells.volumes`.
+
+        rock (Rock):
+            Rock data structure.  Must contain valid field `rock.poro`.
+
+    Returns:
+        pv (ndarray):
+            Array of size (G.cells.num,1) of pore volumes for each individual
+            cell in the grid. This typically amounts to the expression
+            rock.poro * G.cells.volumes, but the function handles non-unit
+            net-to-gross factors as well.
+
+    See also:
+        prst.gridprocessing.computeGeometry,
+        prst.params.rock.Rock
+    """
+    pv = rock.poro * G.cells.volumes
+    if hasattr(rock, "ntg"):
+        raise NotImplementedError("NTG attribute not yet supported in PRST.")
+        pv *= rock.ntg
+    return pv
 
 def _expandToCell(vals, num_cells):
     if np.isscalar(vals):

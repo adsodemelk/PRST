@@ -193,6 +193,6 @@ def plotGrid(G, cell_data=None, bgcolor=(0.5,0.5,0.5), size=(400,300),
     if mlab_show:
         mlab.show()
 
-def plotCellData(G, cell_data):
+def plotCellData(G, cell_data, **kwargs):
     """See plotGrid."""
-    return plotGrid(G, cell_data)
+    return plotGrid(G, cell_data, **kwargs)
