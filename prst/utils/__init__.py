@@ -530,7 +530,14 @@ class ADI(object):
         If the right side is ADI, the corresponding Jacobian rows are overwritten.
         """
         if isinstance(v, ADI):
-            u.val[s] = v.val[:,0]
+            # This part is not so pretty, and could probably
+            # be improved.
+            if u.val[s].ndim <= 1:
+                u.val[s] = v.val.ravel()
+            elif u.val[s].ndim == 2:
+                u.val[s] = v.val
+            else:
+                raise ValueError("This should never happen.")
             try:
                 s = s[0]
             except TypeError:
@@ -615,11 +622,14 @@ def _dot(u, v):
         return u*v
     elif not isinstance(u, ADI) and isinstance(v, ADI):
         # u, v_ad
-        u = np.atleast_2d(u)
+        if not hasattr(u, "dot"):
+            u = np.atleast_2d(u)
         u_sp = sps.csr_matrix(u)
-        return ADI(np.dot(u, v.val), [u_sp*j for j in v.jac])
+        return ADI(u.dot(v.val), [u_sp*j for j in v.jac])
     else:
         # u, v
+        if hasattr(u, "dot"):
+            return u.dot(v)
         return np.dot(u, v)
 
 def _tile(A, reps):

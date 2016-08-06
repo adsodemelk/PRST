@@ -460,6 +460,13 @@ class Test_ADI:
         x, = initVariablesADI(np.array([[5,4]]).T)
         x[:,0] = x[::-1,0]
 
+    def test_setitem_s(self):
+        x, _ = initVariablesADI(np.array([[5,4,3,2]]).T, np.array([[1]]))
+        y, _ = initVariablesADI(np.array([[2,7,8,2]]).T, np.array([[2]]))
+        s = np.array([[1], [2]])
+        x[s[:,0],:] = y[s[:,0],:]
+        assert x.val[1,0] == 7 and x.val[2,0] == 8
+
     def test_max(self):
         x, y = initVariablesADI(np.array([[0,1]]).T, np.array([[5]]).T)
         xmax = x.max()
@@ -529,6 +536,21 @@ class Test_ADI:
         assert np.array_equal(w.val, np.array([[20, 48]]).T)
         assert np.array_equal(w.jac[0].toarray(), np.array([[2, 6], [6, 12]]))
         assert np.array_equal(w.jac[1].toarray(), np.array([[4, 4], [12, 8]]))
+
+    def test_dot_sparsemat_advec(self):
+        x, y = initVariablesADI(np.array([[4,2]]).T, np.array([[2,3]]).T)
+        C = sps.csc_matrix(np.array([[2,0],[1,1]]))
+        Cx = npad.dot(C, x)
+        assert np.array_equal(Cx.val, np.array([[8],[6]]))
+        assert np.array_equal(Cx.jac[0].toarray(), np.array([[2,0],[1,1]]))
+        assert np.array_equal(Cx.jac[1].toarray(), np.array([[0,0],[0,0]]))
+
+    def test_dot_sparsemat_vec(self):
+        C = sps.csc_matrix(np.array([[2,0],[1,1]]))
+        x = np.array([[1], [2]])
+        Cx = npad.dot(C, x)
+        assert np.array_equal(Cx, np.array([[2], [3]]))
+
 
     def test_dot_ad_ad(self):
         x, y = initVariablesADI(np.array([[4]]).T, np.array([[2]]).T)
